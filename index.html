@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>超级井字棋 - 网络对战版</title>
+		<link rel="stylesheet" href="/css/main.css" />
+	</head>
+	<body>
+		<div class="connection-status" id="connectionStatus">
+			<span class="status-disconnected">● 未连接</span>
+		</div>
+
+		<h1 class="game-title">🎮 超级井字棋 - 网络对战 🎮</h1>
+
+		<!-- 连接面板 -->
+		<div class="connection-panel" id="connectionPanel">
+			<h3>网络连接设置</h3>
+			<div>
+				<input type="text" id="serverUrl" class="connection-input" placeholder="WebSocket服务器地址"
+					value="ws://localhost:8080">
+				<button class="connection-button connect-btn" onclick="connectToServer()">连接服务器</button>
+				<button class="connection-button disconnect-btn" onclick="disconnectFromServer()">断开连接</button>
+			</div>
+			<div id="roomControls" style="display: none; margin-top: 15px;">
+				<button class="connection-button create-room-btn" onclick="createRoom()">创建房间</button>
+				<input type="text" id="roomId" class="connection-input" placeholder="房间ID">
+				<button class="connection-button join-room-btn" onclick="joinRoom()">加入房间</button>
+			</div>
+			<div id="connectionInfo" class="room-info" style="display: none;"></div>
+		</div>
+
+		<!-- 玩家信息 -->
+		<div class="player-info" id="playerInfo" style="display: none;">
+			<div>你是玩家: <span id="yourPlayer" class="player-x">X</span></div>
+			<div>对手玩家: <span id="opponentPlayer" class="player-o">O</span></div>
+			<div>房间ID: <strong id="currentRoomId"></strong></div>
+		</div>
+
+		<div class="jump-log" id="jumpLog">
+			等待玩家加入...
+		</div>
+
+		<div class="game-info">
+			<div class="info-item">
+				<div class="info-label">当前玩家</div>
+				<div class="info-value" id="currentPlayer"><span class="player-x">X</span></div>
+			</div>
+			<div class="info-item">
+				<div class="info-label">活跃棋盘</div>
+				<div class="info-value" id="activeBoard">中心 (5)</div>
+			</div>
+			<div class="info-item">
+				<div class="info-label">X 得分</div>
+				<div class="info-value player-x" id="scoreX">0</div>
+			</div>
+			<div class="info-item">
+				<div class="info-label">O 得分</div>
+				<div class="info-value player-o" id="scoreO">0</div>
+			</div>
+			<div class="info-item">
+				<div class="info-label">额外加分</div>
+				<div class="info-value" id="bonusInfo">X: 0 | O: 0</div>
+			</div>
+		</div>
+
+		<div class="overall-board" id="overallBoard">
+			<!-- 9个小棋盘将通过JavaScript生成 -->
+		</div>
+
+		<button class="reset-button" onclick="resetGame()">🔄 重新开始</button>
+
+		<div class="game-info" id="gameStatus" style="display: none;">
+			<div class="info-item">
+				<div class="info-value" id="winnerInfo"></div>
+			</div>
+		</div>
+
+		<div class="rules">
+			<h3>游戏规则 📋</h3>
+			<ul>
+				<li>游戏包含9个3×3的小棋盘，组成一个3×3的大棋盘</li>
+				<li>初始时在中心棋盘（第5个）开始</li>
+				<li>玩家轮流下棋，X先手</li>
+				<li>你在小棋盘中的落子位置决定了对手下一步必须在哪个棋盘下棋</li>
+				<li><strong>网络对战规则：</strong>只能在自己的回合下棋，对手的操作会实时同步</li>
+				<li>当小棋盘分出胜负时，按照新规则智能跳转</li>
+				<li>赢得一个小棋盘得1分，在大棋盘上连成3个额外加2分</li>
+				<li>最终得分高者获胜！</li>
+			</ul>
+		</div>
+
+		<!-- 等待模态框 -->
+		<div class="waiting-overlay" id="waitingOverlay">
+			<div class="waiting-modal">
+				<div class="spinner"></div>
+				<h3 id="waitingMessage">等待对手...</h3>
+				<button class="connection-button disconnect-btn" onclick="cancelWaiting()">取消</button>
+			</div>
+		</div>
+		<script src="/js/main.js"></script>
+	</body>
+</html>
