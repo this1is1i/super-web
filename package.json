@@ -5,7 +5,7 @@
   "main": "js/server.js",
   "scripts": {
     "start": "node js/server.js",
-    "test": "node --test tests/game-rules.test.js tests/swap-protocol.test.js"
+    "test": "node --test tests/game-rules.test.js tests/swap-protocol.test.js tests/ui-layout.test.js"
   },
   "dependencies": {
     "ws": "^8.18.3"

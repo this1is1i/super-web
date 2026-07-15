@@ -4,99 +4,125 @@
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<title>超级井字棋 - 网络对战版</title>
-		<link rel="stylesheet" href="/css/main.css" />
+		<link rel="stylesheet" href="/css/main.css">
 	</head>
 	<body>
-		<div class="connection-status" id="connectionStatus">
-			<span class="status-disconnected">● 未连接</span>
+		<div class="app-shell" id="appShell">
+			<header class="topbar">
+				<div class="topbar-actions">
+					<button class="icon-button" id="rulesButton" onclick="openRulesModal()" aria-label="查看游戏规则">📋 规则</button>
+					<button class="icon-button" id="settingsButton" onclick="openSettings()" aria-label="打开连接与房间设置">☰ 设置</button>
+				</div>
+				<h1 class="game-title">超级井字棋</h1>
+				<div class="connection-status" id="connectionStatus">
+					<span class="status-disconnected">● 未连接</span>
+				</div>
+			</header>
+
+			<main class="game-stage">
+				<section class="game-info" aria-label="游戏状态">
+					<div class="info-item score-item">
+						<div class="info-label">当前比分</div>
+						<div class="info-value score-line">
+							<span class="player-x">X <span id="scoreX">0</span></span>
+							<span class="score-divider">:</span>
+							<span class="player-o"><span id="scoreO">0</span> O</span>
+						</div>
+					</div>
+					<div class="info-item">
+						<div class="info-label">额外加分</div>
+						<div class="info-value bonus-value" id="bonusInfo">X: 0 | O: 0</div>
+					</div>
+					<div class="info-item">
+						<div class="info-label">当前方</div>
+						<div class="info-value" id="currentPlayer"><span class="player-x">X</span></div>
+					</div>
+					<div class="info-item">
+						<div class="info-label">当前棋盘</div>
+						<div class="info-value active-board-value" id="activeBoard">中心 (5)</div>
+					</div>
+				</section>
+
+				<section class="board-area" aria-label="超级井字棋盘">
+					<div class="overall-board" id="overallBoard"></div>
+					<div class="game-result" id="gameStatus" style="display: none;">
+						<div id="winnerInfo"></div>
+					</div>
+				</section>
+
+				<div class="game-actions">
+					<button class="action-button reset-button" onclick="resetGame()">↻ 重新开始</button>
+					<button class="action-button swap-button" id="swapButton" onclick="requestSwap()" style="display: none;">⇄ 交换先后手</button>
+				</div>
+
+				<section class="jump-log" id="jumpLog" aria-label="最近三条步骤历史" aria-live="polite">
+					<div>等待玩家加入...</div>
+				</section>
+			</main>
 		</div>
 
-		<h1 class="game-title">🎮 超级井字棋 - 网络对战 🎮</h1>
-
-		<!-- 连接面板 -->
-		<div class="connection-panel" id="connectionPanel">
-			<h3>网络连接设置</h3>
-			<div>
-				<input type="text" id="serverUrl" class="connection-input" placeholder="WebSocket服务器地址"
-					value="ws://localhost:8080">
-				<button class="connection-button connect-btn" onclick="connectToServer()">连接服务器</button>
-				<button class="connection-button disconnect-btn" onclick="disconnectFromServer()">断开连接</button>
+		<button class="page-backdrop" id="settingsBackdrop" onclick="closeSettings()" aria-label="关闭设置"></button>
+		<aside class="settings-drawer" id="settingsDrawer" aria-hidden="true">
+			<div class="drawer-header">
+				<div>
+					<div class="drawer-eyebrow">游戏控制台</div>
+					<h2>连接与房间设置</h2>
+				</div>
+				<button class="close-button" onclick="closeSettings()" aria-label="收起设置">×</button>
 			</div>
-			<div id="roomControls" style="display: none; margin-top: 15px;">
-				<button class="connection-button create-room-btn" onclick="createRoom()">创建房间</button>
-				<input type="text" id="roomId" class="connection-input" placeholder="房间ID">
-				<button class="connection-button join-room-btn" onclick="joinRoom()">加入房间</button>
-			</div>
-			<div id="connectionInfo" class="room-info" style="display: none;"></div>
+
+			<section class="settings-section connection-panel" id="connectionPanel">
+				<h3>连接设置</h3>
+				<label class="field-label" for="serverUrl">WebSocket 服务器</label>
+				<input type="text" id="serverUrl" class="connection-input" placeholder="WebSocket服务器地址" value="ws://localhost:8080">
+				<div class="button-row">
+					<button class="connection-button connect-btn" onclick="connectToServer()">连接服务器</button>
+					<button class="connection-button disconnect-btn" onclick="disconnectFromServer()">断开连接</button>
+				</div>
+				<div id="connectionInfo" class="room-info" style="display: none;"></div>
+			</section>
+
+			<section class="settings-section">
+				<h3>房间设置</h3>
+				<div id="roomControls" style="display: none;">
+					<button class="connection-button create-room-btn full-button" onclick="createRoom()">创建新房间</button>
+					<div class="join-row">
+						<input type="text" id="roomId" class="connection-input" placeholder="房间ID" maxlength="6">
+						<button class="connection-button join-room-btn" onclick="joinRoom()">加入</button>
+					</div>
+				</div>
+				<div class="player-info" id="playerInfo" style="display: none;">
+					<div><span>你的棋子</span><strong id="yourPlayer" class="player-x">X</strong></div>
+					<div><span>对手棋子</span><strong id="opponentPlayer" class="player-o">O</strong></div>
+					<div><span>房间 ID</span><strong id="currentRoomId"></strong></div>
+				</div>
+				<p class="drawer-hint">创建房间后将房间 ID 发给对手，或输入对方的房间 ID 加入。</p>
+			</section>
+		</aside>
+
+		<div class="modal-overlay is-open" id="rulesModal" aria-hidden="false" onclick="closeRulesOnBackdrop(event)">
+			<section class="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
+				<div class="modal-header">
+					<div>
+						<div class="drawer-eyebrow">首次进入必读</div>
+						<h2 id="rulesTitle">游戏规则</h2>
+					</div>
+					<button class="close-button" onclick="closeRulesModal()" aria-label="关闭规则">×</button>
+				</div>
+				<ul class="rules-list">
+					<li>游戏包含 9 个 3×3 小棋盘，初始从中心棋盘开始，X 先手。</li>
+					<li>落子所在的小格决定对手下一步要进入的小棋盘。</li>
+					<li>橙色光晕始终指示当前正在操作的棋盘；绿色光晕预示赢下当前小局后的目标棋盘。</li>
+					<li>赢得一个小棋盘得 1 分；普通大棋盘三连额外加 2 分。</li>
+					<li>三个小棋盘具有共同获胜线型但未形成对应长线时加 3 分。</li>
+					<li>完整 9×9 盘面上的 9 格同色横线、竖线或大斜线加 4 分；与共同线型重合时只计算 4 分。</li>
+					<li>双方都未落子时可申请交换先后手，请求弹出后冷却 1 分钟。</li>
+					<li>全部小棋盘结束后，总得分更高的一方获胜。</li>
+				</ul>
+				<button class="primary-modal-button" onclick="closeRulesModal()">知道了，开始游戏</button>
+			</section>
 		</div>
 
-		<!-- 玩家信息 -->
-		<div class="player-info" id="playerInfo" style="display: none;">
-			<div>你是玩家: <span id="yourPlayer" class="player-x">X</span></div>
-			<div>对手玩家: <span id="opponentPlayer" class="player-o">O</span></div>
-			<div>房间ID: <strong id="currentRoomId"></strong></div>
-		</div>
-
-		<div class="jump-log" id="jumpLog">
-			等待玩家加入...
-		</div>
-
-		<div class="game-info">
-			<div class="info-item">
-				<div class="info-label">当前玩家</div>
-				<div class="info-value" id="currentPlayer"><span class="player-x">X</span></div>
-			</div>
-			<div class="info-item">
-				<div class="info-label">活跃棋盘</div>
-				<div class="info-value" id="activeBoard">中心 (5)</div>
-			</div>
-			<div class="info-item">
-				<div class="info-label">X 总得分</div>
-				<div class="info-value player-x" id="scoreX">0</div>
-			</div>
-			<div class="info-item">
-				<div class="info-label">O 总得分</div>
-				<div class="info-value player-o" id="scoreO">0</div>
-			</div>
-			<div class="info-item">
-				<div class="info-label">额外加分</div>
-				<div class="info-value" id="bonusInfo">X: 0 | O: 0</div>
-			</div>
-		</div>
-
-		<div class="overall-board" id="overallBoard">
-			<!-- 9个小棋盘将通过JavaScript生成 -->
-		</div>
-
-		<div class="game-actions">
-			<button class="reset-button" onclick="resetGame()">🔄 重新开始</button>
-			<button class="swap-button" id="swapButton" onclick="requestSwap()" style="display: none;">⇄ 交换先后手</button>
-		</div>
-
-		<div class="game-info" id="gameStatus" style="display: none;">
-			<div class="info-item">
-				<div class="info-value" id="winnerInfo"></div>
-			</div>
-		</div>
-
-		<div class="rules">
-			<h3>游戏规则 📋</h3>
-			<ul>
-				<li>游戏包含9个3×3的小棋盘，组成一个3×3的大棋盘</li>
-				<li>初始时在中心棋盘（第5个）开始</li>
-				<li>玩家轮流下棋，X先手</li>
-				<li>你在小棋盘中的落子位置决定了对手下一步必须在哪个棋盘下棋</li>
-				<li><strong>网络对战规则：</strong>只能在自己的回合下棋，对手的操作会实时同步</li>
-				<li>当小棋盘分出胜负时，按照新规则智能跳转</li>
-				<li>赢得一个小棋盘得1分；大棋盘三连额外加2分，三个小棋盘获胜方式相同时改为加3分</li>
-				<li>完整9×9盘面上，任意一条9格横线、竖线或大斜线同色，额外加4分；与同获胜线型重合时只计算长线的4分</li>
-				<li>双方都未落子时可申请交换先后手；请求弹出后有1分钟冷却</li>
-				<li>橙色表示当前棋盘，绿色表示赢下当前小局后的目标或回退棋盘</li>
-				<li>最终得分高者获胜！</li>
-			</ul>
-		</div>
-
-		<!-- 等待模态框 -->
 		<div class="waiting-overlay" id="waitingOverlay">
 			<div class="waiting-modal">
 				<div class="spinner"></div>
@@ -104,6 +130,7 @@
 				<button class="connection-button disconnect-btn" onclick="cancelWaiting()">取消</button>
 			</div>
 		</div>
+
 		<script src="/js/game-rules.js"></script>
 		<script src="/js/main.js"></script>
 	</body>

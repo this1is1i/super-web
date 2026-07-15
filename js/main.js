@@ -135,6 +135,7 @@
         if (isMyTurn) {
           updateJumpLog("你的回合，开始下棋！");
         }
+        closeSettings();
         initGame();
         break;
 
@@ -385,7 +386,9 @@
     var time = new Date().toLocaleTimeString();
     entry.textContent = "[" + time + "] " + message;
     jumpLog.appendChild(entry);
-    jumpLog.scrollTop = jumpLog.scrollHeight;
+    while (jumpLog.children.length > 3) {
+      jumpLog.removeChild(jumpLog.firstElementChild);
+    }
   }
 
   function updateConnectionStatus(status, text) {
@@ -435,7 +438,7 @@
     $("bonusInfo").textContent = "X: " + bonusX + " | O: " + bonusO;
 
     gameState.boards.forEach(function (board, index) {
-      board.isActive = index === gameState.currentBoard && !gameState.isGameOver && isMyTurn;
+      board.isActive = index === gameState.currentBoard && !gameState.isGameOver;
     });
     updateSwapButton();
   }
@@ -484,6 +487,7 @@
 
       if (boardData.isActive) {
         miniBoard.classList.add("active");
+        if (isMyTurn) miniBoard.classList.add("playable");
       }
       if (boardData.winner) {
         miniBoard.classList.add("won-" + boardData.winner.toLowerCase());
@@ -578,6 +582,39 @@
   };
 
   // ============================================================
+  // Overlay navigation
+  // ============================================================
+  window.openSettings = function () {
+    $("settingsDrawer").classList.add("is-open");
+    $("settingsBackdrop").classList.add("is-open");
+    $("settingsDrawer").setAttribute("aria-hidden", "false");
+    $("settingsButton").setAttribute("aria-expanded", "true");
+  };
+
+  window.closeSettings = function () {
+    $("settingsDrawer").classList.remove("is-open");
+    $("settingsBackdrop").classList.remove("is-open");
+    $("settingsDrawer").setAttribute("aria-hidden", "true");
+    $("settingsButton").setAttribute("aria-expanded", "false");
+  };
+
+  window.openRulesModal = function () {
+    var modal = $("rulesModal");
+    modal.classList.add("is-open");
+    modal.setAttribute("aria-hidden", "false");
+  };
+
+  window.closeRulesModal = function () {
+    var modal = $("rulesModal");
+    modal.classList.remove("is-open");
+    modal.setAttribute("aria-hidden", "true");
+  };
+
+  window.closeRulesOnBackdrop = function (event) {
+    if (event.target === event.currentTarget) closeRulesModal();
+  };
+
+  // ============================================================
   // Reset (user-initiated — sends to server if online)
   // ============================================================
   window.resetGame = function () {
@@ -608,6 +645,23 @@
   window.onload = function () {
     updateConnectionStatus("disconnected", "未连接");
     window.setInterval(updateSwapButton, 1000);
+    $("settingsButton").setAttribute("aria-expanded", "false");
+    updateUI();
+    renderBoard();
+    openRulesModal();
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key !== "Escape") return;
+      if ($("rulesModal").classList.contains("is-open")) {
+        closeRulesModal();
+      } else {
+        closeSettings();
+      }
+    });
+
+    window.addEventListener("resize", function () {
+      renderBoard();
+    });
 
     // Auto-connect to the same host that serves the page.
     var wsProtocol = location.protocol === "https:" ? "wss://" : "ws://";
