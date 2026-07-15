@@ -12,7 +12,7 @@ test("the physical board exposes exactly 20 unique 9-cell lines", () => {
   assert.equal(new Set(serialized).size, 20);
 });
 
-test("a matching-method overall win and a full 9-cell line stack to 8 points", () => {
+test("a matching-method overall win replaces its overlapping full-line bonus with 4 points", () => {
   const state = Rules.createInitialGameState();
   [0, 1, 2].forEach((boardIndex) => {
     state.boards[boardIndex].winner = "X";
@@ -24,9 +24,56 @@ test("a matching-method overall win and a full 9-cell line stack to 8 points", (
 
   Rules.calculateBonuses(state);
 
-  assert.deepEqual(state.bonusBreakdown.overall, { X: 5, O: 0 });
+  assert.deepEqual(state.bonusBreakdown.overall, { X: 4, O: 0 });
+  assert.deepEqual(state.bonusBreakdown.fullLines, { X: 0, O: 0 });
+  assert.deepEqual(state.bonusScores, { X: 4, O: 0 });
+});
+
+test("an unrelated full 9-cell line still stacks with a 4-point matching-method win", () => {
+  const state = Rules.createInitialGameState();
+  [0, 1, 2].forEach((boardIndex) => {
+    state.boards[boardIndex].winner = "X";
+    state.boards[boardIndex].winningPatterns = [1];
+    [3, 4, 5].forEach((cellIndex) => {
+      state.boards[boardIndex].cells[cellIndex] = "X";
+    });
+  });
+  [3, 4, 5].forEach((boardIndex) => {
+    [0, 1, 2].forEach((cellIndex) => {
+      state.boards[boardIndex].cells[cellIndex] = "X";
+    });
+  });
+
+  Rules.calculateBonuses(state);
+
+  assert.deepEqual(state.bonusBreakdown.overall, { X: 4, O: 0 });
   assert.deepEqual(state.bonusBreakdown.fullLines, { X: 3, O: 0 });
-  assert.deepEqual(state.bonusScores, { X: 8, O: 0 });
+  assert.deepEqual(state.bonusScores, { X: 7, O: 0 });
+});
+
+test("overlapping vertical and diagonal achievements also score only 4 points", () => {
+  const scenarios = [
+    { boards: [2, 5, 8], cells: [1, 4, 7], pattern: 4 },
+    { boards: [0, 4, 8], cells: [0, 4, 8], pattern: 6 },
+    { boards: [2, 4, 6], cells: [2, 4, 6], pattern: 7 },
+  ];
+
+  scenarios.forEach((scenario) => {
+    const state = Rules.createInitialGameState();
+    scenario.boards.forEach((boardIndex) => {
+      state.boards[boardIndex].winner = "O";
+      state.boards[boardIndex].winningPatterns = [scenario.pattern];
+      scenario.cells.forEach((cellIndex) => {
+        state.boards[boardIndex].cells[cellIndex] = "O";
+      });
+    });
+
+    Rules.calculateBonuses(state);
+
+    assert.deepEqual(state.bonusBreakdown.overall, { X: 0, O: 4 });
+    assert.deepEqual(state.bonusBreakdown.fullLines, { X: 0, O: 0 });
+    assert.deepEqual(state.bonusScores, { X: 0, O: 4 });
+  });
 });
 
 test("different mini-board win methods retain the normal 2-point overall bonus", () => {
