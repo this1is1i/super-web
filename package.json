@@ -4,7 +4,8 @@
   "description": "超级井字棋网络对战版 — Super Tic-Tac-Toe multiplayer over WebSocket",
   "main": "js/server.js",
   "scripts": {
-    "start": "node js/server.js"
+    "start": "node js/server.js",
+    "test": "node --test tests/game-rules.test.js tests/swap-protocol.test.js"
   },
   "dependencies": {
     "ws": "^8.18.3"

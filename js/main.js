@@ -441,7 +441,7 @@
   }
 
   function isTouchLayout() {
-    return window.matchMedia && window.matchMedia("(hover: none), (pointer: coarse)").matches;
+    return window.matchMedia && window.matchMedia("(max-width: 768px)").matches;
   }
 
   function clearPredictedBoard() {
@@ -557,10 +557,10 @@
     button.disabled = !canRequest;
     if (swapPending) {
       button.textContent = "等待交换确认…";
-    } else if (remainingSeconds > 0) {
-      button.textContent = "交换先后手 (" + remainingSeconds + "s)";
     } else if (Rules.hasAnyMove(gameState)) {
       button.textContent = "已落子，无法交换";
+    } else if (remainingSeconds > 0) {
+      button.textContent = "交换先后手 (" + remainingSeconds + "s)";
     } else {
       button.textContent = "⇄ 交换先后手";
     }
@@ -596,8 +596,8 @@
   // ============================================================
   function initGame() {
     clearJumpLog();
-    renderBoard();
     updateUI();
+    renderBoard();
     if (isMyTurn) {
       updateJumpLog("你的回合！当前棋盘: " + (gameState.currentBoard + 1));
     } else {
