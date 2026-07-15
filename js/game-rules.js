@@ -11,8 +11,8 @@
   var CELL_COUNT = 9;
   var CENTER_BOARD = 4;
   var NORMAL_OVERALL_BONUS = 2;
-  var MATCHING_WIN_BONUS = 4;
-  var FULL_LINE_BONUS = 3;
+  var MATCHING_WIN_BONUS = 3;
+  var FULL_LINE_BONUS = 4;
   var WINNING_PATTERNS = [
     [0, 1, 2], [3, 4, 5], [6, 7, 8],
     [0, 3, 6], [1, 4, 7], [2, 5, 8],
@@ -173,7 +173,6 @@
     var overall = { X: 0, O: 0 };
     var fullLines = { X: 0, O: 0 };
     var overallWinners = gameState.boards.map(function (board) { return board.winner; });
-    var overlappingFullLines = new Set();
 
     WINNING_PATTERNS.forEach(function (pattern, overallPatternIndex) {
       var a = pattern[0], b = pattern[1], c = pattern[2];
@@ -182,16 +181,18 @@
         var commonPatterns = getCommonWinningPatterns([
           gameState.boards[a], gameState.boards[b], gameState.boards[c],
         ]);
-        overall[winner] += commonPatterns.length > 0 ? MATCHING_WIN_BONUS : NORMAL_OVERALL_BONUS;
-        commonPatterns.forEach(function (localPatternIndex) {
-          var fullLineIndex = getOverlappingFullLineIndex(overallPatternIndex, localPatternIndex);
-          if (fullLineIndex !== null) overlappingFullLines.add(fullLineIndex);
+        var hasOverlappingFullLine = commonPatterns.some(function (localPatternIndex) {
+          return getOverlappingFullLineIndex(overallPatternIndex, localPatternIndex) !== null;
         });
+        if (commonPatterns.length === 0) {
+          overall[winner] += NORMAL_OVERALL_BONUS;
+        } else if (!hasOverlappingFullLine) {
+          overall[winner] += MATCHING_WIN_BONUS;
+        }
       }
     });
 
-    FULL_BOARD_LINES.forEach(function (positions, fullLineIndex) {
-      if (overlappingFullLines.has(fullLineIndex)) return;
+    FULL_BOARD_LINES.forEach(function (positions) {
       var first = gameState.boards[positions[0][0]].cells[positions[0][1]];
       if (!first) return;
       var isComplete = positions.every(function (position) {

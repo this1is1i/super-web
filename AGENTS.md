@@ -36,7 +36,7 @@ Both server and client must call `js/game-rules.js` for state transitions. Do no
 - Normally, the cell you play (`cell_index`) dictates which board the opponent must play next.
 - Each board records `fromBoard` — the board that last redirected play into it — used to backtrack when the normal target board is already won/full.
 - When a board is won or drawn, `findNextBoardAfterWin` picks the next board: prefer the played cell's board, else the `fromBoard` chain (`findRecursiveAvailableBoard` walks it), else the first available board.
-- Scoring: +1 per mini-board won. An overall 3-in-a-row gives +2, or +4 when all three boards share at least one winning pattern. Each complete same-color physical 9-cell row, column or long diagonal gives +3, except when it is the same achievement as a matching-pattern overall line; that overlap scores only +4. Independent bonuses still stack and are recomputed after every move.
+- Scoring: +1 per mini-board won. An overall 3-in-a-row gives +2, or +3 when all three boards share at least one winning pattern without forming the corresponding physical long line. Each complete same-color physical 9-cell row, column or long diagonal gives +4. When both conditions describe the same achievement, only the +4 long-line bonus applies. Independent bonuses still stack and are recomputed after every move.
 
 ### WebSocket message protocol
 
