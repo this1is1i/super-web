@@ -5,15 +5,9 @@
   // ============================================================
   // Constants
   // ============================================================
-  var BOARD_COUNT = 9;
-  var CELL_COUNT = 9;
-  var CENTER_BOARD = 4;
-  var BONUS_POINTS = 2;
-  var WINNING_PATTERNS = [
-    [0, 1, 2], [3, 4, 5], [6, 7, 8],
-    [0, 3, 6], [1, 4, 7], [2, 5, 8],
-    [0, 4, 8], [2, 4, 6],
-  ];
+  var Rules = window.SuperTicTacToeRules;
+  var BOARD_COUNT = Rules.BOARD_COUNT;
+  var CELL_COUNT = Rules.CELL_COUNT;
 
   // ============================================================
   // State
@@ -25,23 +19,10 @@
   var isMyTurn = false;
   var roomId = null;
   var pendingMoveSnapshot = null;
+  var swapCooldownUntil = 0;
+  var swapPending = false;
 
-  var gameState = {
-    boards: Array.from({ length: BOARD_COUNT }, function (_, i) {
-      return {
-        cells: Array(CELL_COUNT).fill(null),
-        winner: null,
-        isActive: i === CENTER_BOARD,
-        fromBoard: null,
-      };
-    }),
-    currentBoard: CENTER_BOARD,
-    currentPlayer: "X",
-    scores: { X: 0, O: 0 },
-    bonusScores: { X: 0, O: 0 },
-    isGameOver: false,
-    overallWinner: null,
-  };
+  var gameState = Rules.createInitialGameState();
 
   // ============================================================
   // Helpers: DOM shortcuts
@@ -53,22 +34,9 @@
   // ============================================================
   function resetGameLocal() {
     clearJumpLog();
-    gameState = {
-      boards: Array.from({ length: BOARD_COUNT }, function (_, i) {
-        return {
-          cells: Array(CELL_COUNT).fill(null),
-          winner: null,
-          isActive: i === CENTER_BOARD,
-          fromBoard: null,
-        };
-      }),
-      currentBoard: CENTER_BOARD,
-      currentPlayer: "X",
-      scores: { X: 0, O: 0 },
-      bonusScores: { X: 0, O: 0 },
-      isGameOver: false,
-      overallWinner: null,
-    };
+    gameState = Rules.createInitialGameState();
+    pendingMoveSnapshot = null;
+    swapPending = false;
     $("gameStatus").style.display = "none";
     updateUI();
     renderBoard();
@@ -175,8 +143,54 @@
         break;
 
       case "game_reset":
+        playerSymbol = message.player_symbol || playerSymbol;
+        isMyTurn = message.is_your_turn;
         resetGameLocal();
+        updatePlayerInfo();
         updateJumpLog("游戏已重置");
+        break;
+
+      case "swap_request_sent":
+        swapPending = true;
+        swapCooldownUntil = message.cooldown_until;
+        updateSwapButton();
+        updateJumpLog("已发送交换先后手请求，等待对方确认");
+        break;
+
+      case "swap_request":
+        swapPending = true;
+        swapCooldownUntil = message.cooldown_until;
+        updateSwapButton();
+        var accepted = window.confirm("对方请求交换先后手，是否同意？");
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: "respond_swap",
+            room_id: currentRoom,
+            accepted: accepted,
+          }));
+        }
+        break;
+
+      case "swap_result":
+        swapPending = false;
+        swapCooldownUntil = message.cooldown_until || swapCooldownUntil;
+        if (message.accepted) {
+          playerSymbol = message.player_symbol;
+          isMyTurn = message.is_your_turn;
+          updatePlayerInfo();
+          updateJumpLog("双方已交换先后手，你现在是 " + playerSymbol);
+        } else {
+          updateJumpLog(message.responded_by_me ? "你拒绝了交换先后手" : "对方拒绝了交换先后手");
+        }
+        updateUI();
+        renderBoard();
+        break;
+
+      case "swap_unavailable":
+        swapPending = false;
+        if (message.cooldown_until) swapCooldownUntil = message.cooldown_until;
+        updateSwapButton();
+        alert(message.message);
         break;
 
       case "game_over":
@@ -214,18 +228,7 @@
   function rollbackPendingMove() {
     var snap = pendingMoveSnapshot;
     if (!snap) return;
-    gameState.boards[snap.boardIndex].cells = snap.boardCells;
-    gameState.boards[snap.boardIndex].winner = snap.boardWinner;
-    snap.boardsMeta.forEach(function (meta, i) {
-      gameState.boards[i].winner = meta.winner;
-      gameState.boards[i].fromBoard = meta.fromBoard;
-    });
-    gameState.currentBoard = snap.currentBoard;
-    gameState.currentPlayer = snap.currentPlayer;
-    gameState.scores = snap.scores;
-    gameState.bonusScores = snap.bonusScores;
-    gameState.isGameOver = snap.isGameOver;
-    gameState.overallWinner = snap.overallWinner;
+    gameState = snap.gameState;
     isMyTurn = snap.isMyTurn;
     pendingMoveSnapshot = null;
     updateUI();
@@ -301,43 +304,14 @@
     var cellIndex = moveData.cell_index;
     var player = moveData.player;
 
-    gameState.boards[boardIndex].cells[cellIndex] = player;
-
-    if (checkMiniBoardWin(boardIndex)) {
-      gameState.boards[boardIndex].winner = player;
-      gameState.scores[player]++;
-      var nextBoard = findNextBoardAfterWin(boardIndex, cellIndex);
-      if (nextBoard !== null) {
-        gameState.currentBoard = nextBoard;
-        gameState.boards[nextBoard].fromBoard = boardIndex; // fix #7
-      }
-    } else if (checkMiniBoardDraw(boardIndex)) {
-      gameState.boards[boardIndex].winner = "draw";
-      var nextBoard2 = findNextBoardAfterWin(boardIndex, cellIndex);
-      if (nextBoard2 !== null) {
-        gameState.currentBoard = nextBoard2;
-        gameState.boards[nextBoard2].fromBoard = boardIndex; // fix #7
-      }
-    } else {
-      var nextBoard3 = cellIndex;
-      if (!gameState.boards[nextBoard3].winner) {
-        gameState.currentBoard = nextBoard3;
-        gameState.boards[nextBoard3].fromBoard = boardIndex;
-      } else {
-        gameState.currentBoard = boardIndex;
-      }
-    }
-
-    checkOverallWin();
-
-    isMyTurn = true;
-    gameState.currentPlayer = playerSymbol;
+    var moveResult = Rules.applyMove(gameState, boardIndex, cellIndex, player);
+    isMyTurn = !moveResult.gameOver && gameState.currentPlayer === playerSymbol;
 
     updateUI();
     renderBoard();
 
-    // checkGameEnd now returns boolean (fix #6)
-    if (checkGameEnd()) {
+    if (moveResult.gameOver) {
+      showGameResult();
       updateJumpLog("对手在棋盘" + (boardIndex + 1) + " 位置" + (cellIndex + 1) + " 落子，游戏结束！");
     } else {
       updateJumpLog("对手在棋盘" + (boardIndex + 1) + " 位置" + (cellIndex + 1) + " 落子，轮到你了！");
@@ -357,158 +331,27 @@
 
     // Save snapshot for rollback
     pendingMoveSnapshot = {
-      boardIndex: boardIndex,
-      cellIndex: cellIndex,
-      currentBoard: gameState.currentBoard,
+      gameState: JSON.parse(JSON.stringify(gameState)),
       isMyTurn: isMyTurn,
-      currentPlayer: gameState.currentPlayer,
-      scores: Object.assign({}, gameState.scores),
-      bonusScores: Object.assign({}, gameState.bonusScores),
-      isGameOver: gameState.isGameOver,
-      overallWinner: gameState.overallWinner,
-      boardCells: gameState.boards[boardIndex].cells.slice(),
-      boardWinner: gameState.boards[boardIndex].winner,
-      boardsMeta: gameState.boards.map(function (b) {
-        return { winner: b.winner, fromBoard: b.fromBoard };
-      }),
     };
 
     sendMove(boardIndex, cellIndex);
 
-    // Optimistic local update
-    gameState.boards[boardIndex].cells[cellIndex] = playerSymbol;
-
-    if (checkMiniBoardWin(boardIndex)) {
-      gameState.boards[boardIndex].winner = playerSymbol;
-      gameState.scores[playerSymbol]++;
-      var nextBoard = findNextBoardAfterWin(boardIndex, cellIndex);
-      if (nextBoard !== null) {
-        gameState.currentBoard = nextBoard;
-        gameState.boards[nextBoard].fromBoard = boardIndex; // fix #7
-      }
-    } else if (checkMiniBoardDraw(boardIndex)) {
-      gameState.boards[boardIndex].winner = "draw";
-      var nextBoard2 = findNextBoardAfterWin(boardIndex, cellIndex);
-      if (nextBoard2 !== null) {
-        gameState.currentBoard = nextBoard2;
-        gameState.boards[nextBoard2].fromBoard = boardIndex; // fix #7
-      }
-    } else {
-      var nextBoard3 = cellIndex;
-      if (!gameState.boards[nextBoard3].winner) {
-        gameState.currentBoard = nextBoard3;
-        gameState.boards[nextBoard3].fromBoard = boardIndex;
-      } else {
-        gameState.currentBoard = boardIndex;
-      }
-    }
-
-    checkOverallWin();
-
+    // Optimistic local update through the same rules used by the server.
+    var moveResult = Rules.applyMove(gameState, boardIndex, cellIndex, playerSymbol);
     isMyTurn = false;
-    gameState.currentPlayer = gameState.currentPlayer === "X" ? "O" : "X";
 
     updateUI();
     renderBoard();
-    checkGameEnd();
+    if (moveResult.gameOver) showGameResult();
 
     updateJumpLog("你在棋盘" + (boardIndex + 1) + " 位置" + (cellIndex + 1) + " 落子");
   }
 
-  // ============================================================
-  // Game logic (client copy — must mirror server.js)
-  // ============================================================
-  function findNextBoardAfterWin(wonBoardIndex, moveCellIndex) {
-    var targetBoard = moveCellIndex;
-    if (!gameState.boards[targetBoard].winner) return targetBoard;
-
-    var fromBoard = gameState.boards[wonBoardIndex].fromBoard;
-    if (fromBoard !== null && !gameState.boards[fromBoard].winner) return fromBoard;
-
-    if (fromBoard !== null) {
-      var recursiveBoard = findRecursiveAvailableBoard(fromBoard);
-      if (recursiveBoard !== null) return recursiveBoard;
-    }
-
-    for (var i = 0; i < BOARD_COUNT; i++) {
-      if (!gameState.boards[i].winner) return i;
-    }
-    return null;
-  }
-
-  function findRecursiveAvailableBoard(boardIndex) {
-    var visited = new Set();
-    var stack = [boardIndex];
-    while (stack.length > 0) {
-      var current = stack.pop();
-      if (visited.has(current)) continue;
-      visited.add(current);
-      var fromBoard = gameState.boards[current].fromBoard;
-      if (fromBoard === null) break;
-      if (!gameState.boards[fromBoard].winner) return fromBoard;
-      stack.push(fromBoard);
-    }
-    return null;
-  }
-
-  function checkMiniBoardWin(boardIndex) {
-    var cells = gameState.boards[boardIndex].cells;
-    for (var p = 0; p < WINNING_PATTERNS.length; p++) {
-      var pat = WINNING_PATTERNS[p];
-      var a = pat[0], b = pat[1], c = pat[2];
-      if (cells[a] && cells[a] === cells[b] && cells[a] === cells[c]) return true;
-    }
-    return false;
-  }
-
-  function checkMiniBoardDraw(boardIndex) {
-    var board = gameState.boards[boardIndex];
-    return board.cells.every(function (cell) { return cell !== null; }) && !board.winner;
-  }
-
-  function checkOverallWin() {
-    var overallBoard = gameState.boards.map(function (b) { return b.winner; });
-    gameState.bonusScores = { X: 0, O: 0 };
-
-    WINNING_PATTERNS.forEach(function (pat) {
-      var a = pat[0], b = pat[1], c = pat[2];
-      if (
-        overallBoard[a] &&
-        overallBoard[a] === overallBoard[b] &&
-        overallBoard[a] === overallBoard[c] &&
-        overallBoard[a] !== "draw"
-      ) {
-        // Cumulative (fix #4)
-        gameState.bonusScores[overallBoard[a]] += BONUS_POINTS;
-      }
-    });
-  }
-
-  function checkGameEnd() {
-    var allBoardsEnded = gameState.boards.every(function (b) { return b.winner !== null; });
-    if (allBoardsEnded) {
-      gameState.isGameOver = true;
-
-      var totalX = gameState.scores.X + (gameState.bonusScores.X || 0);
-      var totalO = gameState.scores.O + (gameState.bonusScores.O || 0);
-
-      if (totalX > totalO) {
-        gameState.overallWinner = "X";
-      } else if (totalO > totalX) {
-        gameState.overallWinner = "O";
-      } else {
-        gameState.overallWinner = "draw";
-      }
-
-      showGameResult();
-      return true; // fix #6
-    }
-    return false; // fix #6
-  }
-
   function showGameResult() {
-    var totalX = gameState.scores.X + (gameState.bonusScores.X || 0);
-    var totalO = gameState.scores.O + (gameState.bonusScores.O || 0);
+    var totals = Rules.getTotalScores(gameState);
+    var totalX = totals.X;
+    var totalO = totals.O;
 
     $("gameStatus").style.display = "block";
 
@@ -559,7 +402,10 @@
     $("playerInfo").style.display = "block";
     $("yourPlayer").textContent = playerSymbol;
     $("opponentPlayer").textContent = playerSymbol === "X" ? "O" : "X";
+    $("yourPlayer").className = playerSymbol === "X" ? "player-x" : "player-o";
+    $("opponentPlayer").className = playerSymbol === "X" ? "player-o" : "player-x";
     $("currentRoomId").textContent = currentRoom || roomId;
+    updateSwapButton();
   }
 
   function showWaiting(message) {
@@ -580,8 +426,9 @@
     $("activeBoard").textContent = boardNames[gameState.currentBoard] +
       " (" + (gameState.currentBoard + 1) + ")";
 
-    $("scoreX").textContent = gameState.scores.X;
-    $("scoreO").textContent = gameState.scores.O;
+    var totals = Rules.getTotalScores(gameState);
+    $("scoreX").textContent = totals.X;
+    $("scoreO").textContent = totals.O;
 
     var bonusX = gameState.bonusScores.X || 0;
     var bonusO = gameState.bonusScores.O || 0;
@@ -590,6 +437,38 @@
     gameState.boards.forEach(function (board, index) {
       board.isActive = index === gameState.currentBoard && !gameState.isGameOver && isMyTurn;
     });
+    updateSwapButton();
+  }
+
+  function isTouchLayout() {
+    return window.matchMedia && window.matchMedia("(hover: none), (pointer: coarse)").matches;
+  }
+
+  function clearPredictedBoard() {
+    var highlighted = document.querySelectorAll(".mini-board.predicted-next");
+    for (var index = 0; index < highlighted.length; index++) {
+      highlighted[index].classList.remove("predicted-next");
+    }
+  }
+
+  function predictWinningDestination(boardIndex, cellIndex) {
+    var board = gameState.boards[boardIndex];
+    var simulatedCells = board.cells.slice();
+    simulatedCells[cellIndex] = playerSymbol;
+    if (Rules.getWinningPatternIndexes(gameState, boardIndex, simulatedCells).length === 0) return null;
+
+    var previousWinner = board.winner;
+    board.winner = playerSymbol;
+    var destination = Rules.findNextBoardAfterWin(gameState, boardIndex, cellIndex);
+    board.winner = previousWinner;
+    return destination;
+  }
+
+  function showPredictedBoard(boardIndex) {
+    clearPredictedBoard();
+    if (boardIndex === null) return;
+    var target = $("board-" + boardIndex);
+    if (target) target.classList.add("predicted-next");
   }
 
   function renderBoard() {
@@ -607,7 +486,7 @@
         miniBoard.classList.add("active");
       }
       if (boardData.winner) {
-        miniBoard.classList.add("won-" + boardData.winner);
+        miniBoard.classList.add("won-" + boardData.winner.toLowerCase());
       }
 
       var label = document.createElement("div");
@@ -643,6 +522,14 @@
           isMyTurn
         ) {
           cell.addEventListener("click", handleCellClick);
+          if (!isTouchLayout()) {
+            (function (activeBoardIndex, activeCellIndex, activeCell) {
+              activeCell.addEventListener("mouseenter", function () {
+                showPredictedBoard(predictWinningDestination(activeBoardIndex, activeCellIndex));
+              });
+              activeCell.addEventListener("mouseleave", clearPredictedBoard);
+            })(boardIndex, cellIndex, cell);
+          }
         }
 
         miniBoard.appendChild(cell);
@@ -650,7 +537,45 @@
 
       overallBoard.appendChild(miniBoard);
     }
+
+    // Touch devices cannot hover, so show the current board's fallback destination.
+    var current = gameState.boards[gameState.currentBoard];
+    if (
+      isTouchLayout() && isMyTurn && !gameState.isGameOver &&
+      current && current.fromBoard !== null
+    ) {
+      showPredictedBoard(Rules.findFallbackBoardAfterWin(gameState, gameState.currentBoard));
+    }
   }
+
+  function updateSwapButton() {
+    var button = $("swapButton");
+    if (!button) return;
+    var remainingSeconds = Math.max(0, Math.ceil((swapCooldownUntil - Date.now()) / 1000));
+    var canRequest = Boolean(currentRoom) && !Rules.hasAnyMove(gameState) && !swapPending && remainingSeconds === 0;
+    button.style.display = currentRoom ? "inline-block" : "none";
+    button.disabled = !canRequest;
+    if (swapPending) {
+      button.textContent = "等待交换确认…";
+    } else if (remainingSeconds > 0) {
+      button.textContent = "交换先后手 (" + remainingSeconds + "s)";
+    } else if (Rules.hasAnyMove(gameState)) {
+      button.textContent = "已落子，无法交换";
+    } else {
+      button.textContent = "⇄ 交换先后手";
+    }
+  }
+
+  window.requestSwap = function () {
+    if (!ws || ws.readyState !== WebSocket.OPEN || !currentRoom) return;
+    if (Rules.hasAnyMove(gameState)) {
+      alert("已有玩家落子，不能再交换先后手");
+      return;
+    }
+    swapPending = true;
+    updateSwapButton();
+    ws.send(JSON.stringify({ type: "request_swap", room_id: currentRoom }));
+  };
 
   // ============================================================
   // Reset (user-initiated — sends to server if online)
@@ -682,6 +607,7 @@
 
   window.onload = function () {
     updateConnectionStatus("disconnected", "未连接");
+    window.setInterval(updateSwapButton, 1000);
 
     // Auto-connect to the same host that serves the page.
     var wsProtocol = location.protocol === "https:" ? "wss://" : "ws://";

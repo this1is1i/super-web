@@ -51,11 +51,11 @@
 				<div class="info-value" id="activeBoard">中心 (5)</div>
 			</div>
 			<div class="info-item">
-				<div class="info-label">X 得分</div>
+				<div class="info-label">X 总得分</div>
 				<div class="info-value player-x" id="scoreX">0</div>
 			</div>
 			<div class="info-item">
-				<div class="info-label">O 得分</div>
+				<div class="info-label">O 总得分</div>
 				<div class="info-value player-o" id="scoreO">0</div>
 			</div>
 			<div class="info-item">
@@ -68,7 +68,10 @@
 			<!-- 9个小棋盘将通过JavaScript生成 -->
 		</div>
 
-		<button class="reset-button" onclick="resetGame()">🔄 重新开始</button>
+		<div class="game-actions">
+			<button class="reset-button" onclick="resetGame()">🔄 重新开始</button>
+			<button class="swap-button" id="swapButton" onclick="requestSwap()" style="display: none;">⇄ 交换先后手</button>
+		</div>
 
 		<div class="game-info" id="gameStatus" style="display: none;">
 			<div class="info-item">
@@ -85,7 +88,10 @@
 				<li>你在小棋盘中的落子位置决定了对手下一步必须在哪个棋盘下棋</li>
 				<li><strong>网络对战规则：</strong>只能在自己的回合下棋，对手的操作会实时同步</li>
 				<li>当小棋盘分出胜负时，按照新规则智能跳转</li>
-				<li>赢得一个小棋盘得1分，在大棋盘上连成3个额外加2分</li>
+				<li>赢得一个小棋盘得1分；大棋盘三连额外加2分，三个小棋盘获胜方式相同时改为加5分</li>
+				<li>完整9×9盘面上，任意一条9格横线、竖线或大斜线同色，额外加3分；奖励可叠加</li>
+				<li>双方都未落子时可申请交换先后手；请求弹出后有1分钟冷却</li>
+				<li>橙色表示当前棋盘，绿色表示赢下当前小局后的目标或回退棋盘</li>
 				<li>最终得分高者获胜！</li>
 			</ul>
 		</div>
@@ -98,6 +104,7 @@
 				<button class="connection-button disconnect-btn" onclick="cancelWaiting()">取消</button>
 			</div>
 		</div>
+		<script src="/js/game-rules.js"></script>
 		<script src="/js/main.js"></script>
 	</body>
 </html>

@@ -113,6 +113,18 @@ body {
     z-index: 10;
 }
 
+.mini-board.predicted-next {
+    box-shadow: 0 0 28px rgba(46, 204, 113, 0.95);
+    border: 3px solid #2ecc71;
+    z-index: 9;
+}
+
+.mini-board.active.predicted-next {
+    box-shadow:
+        0 0 25px rgba(243, 156, 18, 0.8),
+        inset 0 0 0 4px rgba(46, 204, 113, 0.95);
+}
+
 .mini-board.won-x {
     background: linear-gradient(135deg, #e74c3c, #c0392b);
     box-shadow: 0 0 15px rgba(231, 76, 60, 0.7);
@@ -274,6 +286,41 @@ body {
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.game-actions {
+    margin-top: 30px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.game-actions .reset-button {
+    margin-top: 0;
+}
+
+.swap-button {
+    padding: 12px 24px;
+    font-size: 1.05em;
+    background: linear-gradient(135deg, #8e44ad, #6c3483);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.swap-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.swap-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
 }
 
 .reset-button:hover {

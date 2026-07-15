@@ -3,19 +3,14 @@ const WebSocket = require("ws");
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const Rules = require("./game-rules");
 
 // ============================================================
 // Constants
 // ============================================================
-const BOARD_COUNT = 9;
-const CELL_COUNT = 9;
-const CENTER_BOARD = 4;
-const BONUS_POINTS = 2;
-const WINNING_PATTERNS = [
-  [0, 1, 2], [3, 4, 5], [6, 7, 8],
-  [0, 3, 6], [1, 4, 7], [2, 5, 8],
-  [0, 4, 8], [2, 4, 6],
-];
+const BOARD_COUNT = Rules.BOARD_COUNT;
+const CELL_COUNT = Rules.CELL_COUNT;
+const SWAP_COOLDOWN_MS = 60 * 1000;
 const ROOM_ID_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no confusing 0/O/1/I
 
 // ============================================================
@@ -164,7 +159,9 @@ wss.on("connection", (ws) => {
           rooms.set(roomId, {
             id: roomId,
             players: [{ ws, symbol: "X" }],
-            gameState: createInitialGameState(),
+            gameState: Rules.createInitialGameState(),
+            pendingSwap: null,
+            nextSwapRequestAt: 0,
           });
 
           ws.send(JSON.stringify({
@@ -205,6 +202,82 @@ wss.on("connection", (ws) => {
               room_id: room.id,
               player_symbol: player.symbol,
               is_your_turn: player.symbol === "X",
+            }));
+          });
+        }
+        break;
+
+      // ========================================================
+      case "request_swap":
+        {
+          const swapRoom = rooms.get(data.room_id);
+          const requester = swapRoom && swapRoom.players.find((player) => player.ws === ws);
+          if (!swapRoom || !requester || swapRoom.players.length !== 2) {
+            ws.send(JSON.stringify({ type: "swap_unavailable", message: "需要双方都在房间内才能交换先后手" }));
+            return;
+          }
+          if (Rules.hasAnyMove(swapRoom.gameState)) {
+            ws.send(JSON.stringify({ type: "swap_unavailable", message: "已有玩家落子，不能再交换先后手" }));
+            return;
+          }
+
+          const now = Date.now();
+          if (swapRoom.pendingSwap) {
+            ws.send(JSON.stringify({ type: "swap_unavailable", message: "已有交换请求等待确认" }));
+            return;
+          }
+          if (now < swapRoom.nextSwapRequestAt) {
+            ws.send(JSON.stringify({
+              type: "swap_unavailable",
+              message: "交换请求冷却中",
+              cooldown_until: swapRoom.nextSwapRequestAt,
+            }));
+            return;
+          }
+
+          swapRoom.nextSwapRequestAt = now + SWAP_COOLDOWN_MS;
+          swapRoom.pendingSwap = { requesterWs: ws };
+          const opponent = swapRoom.players.find((player) => player.ws !== ws);
+
+          ws.send(JSON.stringify({
+            type: "swap_request_sent",
+            cooldown_until: swapRoom.nextSwapRequestAt,
+          }));
+          opponent.ws.send(JSON.stringify({
+            type: "swap_request",
+            requester_symbol: requester.symbol,
+            cooldown_until: swapRoom.nextSwapRequestAt,
+          }));
+        }
+        break;
+
+      // ========================================================
+      case "respond_swap":
+        {
+          const swapRoom = rooms.get(data.room_id);
+          const responder = swapRoom && swapRoom.players.find((player) => player.ws === ws);
+          const pending = swapRoom && swapRoom.pendingSwap;
+          if (!swapRoom || !responder || !pending || pending.requesterWs === ws) {
+            ws.send(JSON.stringify({ type: "swap_unavailable", message: "交换请求已失效" }));
+            return;
+          }
+
+          const accepted = data.accepted === true && !Rules.hasAnyMove(swapRoom.gameState);
+          if (accepted) {
+            swapRoom.players.forEach((player) => {
+              player.symbol = player.symbol === "X" ? "O" : "X";
+            });
+          }
+          swapRoom.pendingSwap = null;
+
+          swapRoom.players.forEach((player) => {
+            player.ws.send(JSON.stringify({
+              type: "swap_result",
+              accepted: accepted,
+              player_symbol: player.symbol,
+              is_your_turn: player.symbol === swapRoom.gameState.currentPlayer,
+              responded_by_me: player.ws === ws,
+              cooldown_until: swapRoom.nextSwapRequestAt,
             }));
           });
         }
@@ -260,46 +333,9 @@ wss.on("connection", (ws) => {
           // Use authoritative symbol, NOT the client-supplied move.player (fix #2)
           const symbol = currentPlayer.symbol;
 
-          board.cells[move.cell_index] = symbol;
-
-          // Check mini-board win/draw and update currentBoard
-          if (checkMiniBoardWin(gameState, move.board_index)) {
-            board.winner = symbol;
-            gameState.scores[symbol]++;
-            const nextBoard = findNextBoardAfterWin(
-              gameState, move.board_index, move.cell_index
-            );
-            if (nextBoard !== null) {
-              gameState.currentBoard = nextBoard;
-              // Track fromBoard after win/draw jump (fix #7)
-              gameState.boards[nextBoard].fromBoard = move.board_index;
-            }
-          } else if (checkMiniBoardDraw(gameState, move.board_index)) {
-            board.winner = "draw";
-            const nextBoard = findNextBoardAfterWin(
-              gameState, move.board_index, move.cell_index
-            );
-            if (nextBoard !== null) {
-              gameState.currentBoard = nextBoard;
-              gameState.boards[nextBoard].fromBoard = move.board_index;
-            }
-          } else {
-            // Normal jump to the cell's target board
-            const nextBoard = move.cell_index;
-            if (!gameState.boards[nextBoard].winner) {
-              gameState.currentBoard = nextBoard;
-              gameState.boards[nextBoard].fromBoard = move.board_index;
-            } else {
-              gameState.currentBoard = move.board_index;
-            }
-          }
-
-          // Switch turn
-          gameState.currentPlayer = gameState.currentPlayer === "X" ? "O" : "X";
-
-          // Check overall bonus and game end
-          checkOverallWin(gameState);
-          const gameOver = checkGameEnd(gameState);
+          const moveResult = Rules.applyMove(
+            gameState, move.board_index, move.cell_index, symbol
+          );
 
           // Broadcast move
           moveRoom.players.forEach((player) => {
@@ -314,14 +350,13 @@ wss.on("connection", (ws) => {
           });
 
           // Send explicit game_over if applicable
-          if (gameOver) {
-            const totalX = gameState.scores.X + (gameState.bonusScores.X || 0);
-            const totalO = gameState.scores.O + (gameState.bonusScores.O || 0);
+          if (moveResult.gameOver) {
+            const totals = Rules.getTotalScores(gameState);
             moveRoom.players.forEach((player) => {
               player.ws.send(JSON.stringify({
                 type: "game_over",
                 winner: gameState.overallWinner,
-                scores: { X: totalX, O: totalO },
+                scores: totals,
               }));
             });
           }
@@ -334,10 +369,15 @@ wss.on("connection", (ws) => {
           const resetRoom = rooms.get(data.room_id);
           if (!resetRoom) return;
 
-          resetRoom.gameState = createInitialGameState();
+          resetRoom.gameState = Rules.createInitialGameState();
+          resetRoom.pendingSwap = null;
 
           resetRoom.players.forEach((player) => {
-            player.ws.send(JSON.stringify({ type: "game_reset" }));
+            player.ws.send(JSON.stringify({
+              type: "game_reset",
+              player_symbol: player.symbol,
+              is_your_turn: player.symbol === "X",
+            }));
           });
         }
         break;
@@ -387,116 +427,6 @@ wss.on("connection", (ws) => {
     }
   });
 });
-
-// ============================================================
-// Game logic (authoritative copy)
-// ============================================================
-
-function createInitialGameState() {
-  return {
-    boards: Array.from({ length: BOARD_COUNT }, () => ({
-      cells: Array(CELL_COUNT).fill(null),
-      winner: null,
-      fromBoard: null,
-    })),
-    currentBoard: CENTER_BOARD,
-    currentPlayer: "X",
-    scores: { X: 0, O: 0 },
-    bonusScores: { X: 0, O: 0 },
-    isGameOver: false,
-    overallWinner: null,
-  };
-}
-
-function checkMiniBoardWin(gameState, boardIndex) {
-  const cells = gameState.boards[boardIndex].cells;
-  for (const [a, b, c] of WINNING_PATTERNS) {
-    if (cells[a] && cells[a] === cells[b] && cells[a] === cells[c]) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function checkMiniBoardDraw(gameState, boardIndex) {
-  const board = gameState.boards[boardIndex];
-  return board.cells.every((cell) => cell !== null) && !board.winner;
-}
-
-function findNextBoardAfterWin(gameState, wonBoardIndex, moveCellIndex) {
-  const targetBoard = moveCellIndex;
-  if (!gameState.boards[targetBoard].winner) {
-    return targetBoard;
-  }
-
-  const fromBoard = gameState.boards[wonBoardIndex].fromBoard;
-  if (fromBoard !== null && !gameState.boards[fromBoard].winner) {
-    return fromBoard;
-  }
-
-  if (fromBoard !== null) {
-    const recursiveBoard = findRecursiveAvailableBoard(gameState, fromBoard);
-    if (recursiveBoard !== null) return recursiveBoard;
-  }
-
-  for (let i = 0; i < BOARD_COUNT; i++) {
-    if (!gameState.boards[i].winner) return i;
-  }
-  return null;
-}
-
-function findRecursiveAvailableBoard(gameState, boardIndex) {
-  const visited = new Set();
-  const stack = [boardIndex];
-
-  while (stack.length > 0) {
-    const current = stack.pop();
-    if (visited.has(current)) continue;
-    visited.add(current);
-
-    const fromBoard = gameState.boards[current].fromBoard;
-    if (fromBoard === null) break;
-    if (!gameState.boards[fromBoard].winner) return fromBoard;
-    stack.push(fromBoard);
-  }
-
-  return null;
-}
-
-function checkOverallWin(gameState) {
-  const overallBoard = gameState.boards.map((b) => b.winner);
-  gameState.bonusScores = { X: 0, O: 0 };
-
-  for (const [a, b, c] of WINNING_PATTERNS) {
-    if (
-      overallBoard[a] &&
-      overallBoard[a] === overallBoard[b] &&
-      overallBoard[a] === overallBoard[c] &&
-      overallBoard[a] !== "draw"
-    ) {
-      // Cumulative bonus — multiple lines all count (fix #4)
-      gameState.bonusScores[overallBoard[a]] += BONUS_POINTS;
-    }
-  }
-}
-
-function checkGameEnd(gameState) {
-  const allBoardsEnded = gameState.boards.every((b) => b.winner !== null);
-  if (allBoardsEnded) {
-    gameState.isGameOver = true;
-    const totalX = gameState.scores.X + (gameState.bonusScores.X || 0);
-    const totalO = gameState.scores.O + (gameState.bonusScores.O || 0);
-    if (totalX > totalO) {
-      gameState.overallWinner = "X";
-    } else if (totalO > totalX) {
-      gameState.overallWinner = "O";
-    } else {
-      gameState.overallWinner = "draw";
-    }
-    return true;
-  }
-  return false;
-}
 
 // ============================================================
 // Start
