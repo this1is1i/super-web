@@ -161,6 +161,7 @@ test("a dropped member resumes the same seat with authoritative game state and c
 
     room.second.terminate();
     const temporary = await room.first.next("player_temporarily_disconnected");
+    assert.equal(temporary.room_id, room.created.room_id);
     assert.equal(temporary.player_symbol, "O");
     assert.ok(temporary.reconnect_deadline > Date.now());
 
@@ -182,7 +183,9 @@ test("a dropped member resumes the same seat with authoritative game state and c
     assert.equal(resumed.chat_history[0].client_message_id, "before-drop");
     assert.equal(resumed.session_id, room.secondStart.session_id);
     assert.notEqual(resumed.resume_token, room.secondStart.resume_token);
-    assert.equal((await room.first.next("player_reconnected")).player_symbol, "O");
+    const reconnected = await room.first.next("player_reconnected");
+    assert.equal(reconnected.room_id, room.created.room_id);
+    assert.equal(reconnected.player_symbol, "O");
 
     const replay = await connect(url);
     clients.push(replay);
@@ -324,7 +327,9 @@ test("leave_room bypasses the grace period and invalidates the room immediately"
     const room = await createStartedRoom(url);
     clients.push(room.first, room.second);
     room.first.send({ type: "leave_room", room_id: room.created.room_id });
-    assert.equal((await room.second.next("player_disconnected")).type, "player_disconnected");
+    const disconnected = await room.second.next("player_disconnected");
+    assert.equal(disconnected.type, "player_disconnected");
+    assert.equal(disconnected.room_id, room.created.room_id);
 
     const replacement = await connect(url);
     clients.push(replacement);

@@ -7,6 +7,7 @@
   var BOARD_COUNT = Rules.BOARD_COUNT;
   var CELL_COUNT = Rules.CELL_COUNT;
   var RECONNECT_GRACE_MS = 5 * 60 * 1000;
+  var CONNECT_TIMEOUT_MS = 10 * 1000;
   var MAX_CHAT_IMAGE_BYTES = 512 * 1024;
   var MAX_IMAGE_EDGE = 1600;
   var RESUME_STORAGE_KEY = "super-tic-tac-toe-resume";
@@ -17,6 +18,8 @@
   var reconnectStartedAt = 0;
   var reconnectAttempt = 0;
   var reconnectTimer = null;
+  var connectionTimer = null;
+  var connectionGeneration = 0;
   var lastServerUrl = "";
   var currentRoom = null;
   var roomId = null;
@@ -138,8 +141,34 @@
     reconnectAttempt = 0;
   }
 
+  function clearConnectionTimer() {
+    if (connectionTimer) window.clearTimeout(connectionTimer);
+    connectionTimer = null;
+  }
+
+  function startResumeTimeout(socket, generation) {
+    clearConnectionTimer();
+    connectionTimer = window.setTimeout(function () {
+      if (ws !== socket || generation !== connectionGeneration) return;
+      ws = null;
+      connectionGeneration++;
+      clearConnectionTimer();
+      socket.close();
+      isConnected = false;
+      roomReady = false;
+      isMyTurn = false;
+      updateChatAvailability();
+      renderBoard();
+      updateConnectionStatus("connecting", "房间恢复超时，正在重试…");
+      scheduleReconnect();
+    }, CONNECT_TIMEOUT_MS);
+  }
+
   function scheduleReconnect() {
-    if (intentionalDisconnect || !sessionId || !resumeToken || !currentRoom) return;
+    if (
+      intentionalDisconnect || gameConfig.opponentMode !== "pvp" ||
+      !sessionId || !resumeToken || !currentRoom || reconnectTimer
+    ) return;
     var now = Date.now();
     if (!reconnectStartedAt) reconnectStartedAt = now;
     if (now - reconnectStartedAt >= RECONNECT_GRACE_MS) {
@@ -150,19 +179,43 @@
     reconnectAttempt++;
     updateConnectionStatus("connecting", "正在恢复连接…");
     reconnectTimer = window.setTimeout(function () {
+      reconnectTimer = null;
       openSocket(true);
     }, delay);
   }
 
   function openSocket(isResume) {
+    if (gameConfig.opponentMode !== "pvp") return;
     if (!lastServerUrl || ws && (
       ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN
     )) return;
     try {
-      ws = new WebSocket(lastServerUrl);
-      ws.onopen = function () {
+      var socket = new WebSocket(lastServerUrl);
+      var generation = ++connectionGeneration;
+      ws = socket;
+      clearConnectionTimer();
+      connectionTimer = window.setTimeout(function () {
+        if (
+          ws !== socket || generation !== connectionGeneration ||
+          socket.readyState !== WebSocket.CONNECTING
+        ) return;
+        ws = null;
+        connectionGeneration++;
+        clearConnectionTimer();
+        socket.close();
+        isConnected = false;
+        if (isResume) {
+          updateConnectionStatus("connecting", "连接超时，正在重试…");
+          scheduleReconnect();
+        } else {
+          updateConnectionStatus("disconnected", "连接超时，请重试");
+        }
+      }, CONNECT_TIMEOUT_MS);
+      socket.onopen = function () {
+        if (ws !== socket || generation !== connectionGeneration) return;
+        clearConnectionTimer();
         isConnected = true;
-        reconnectAttempt = 0;
+        if (!isResume) cancelReconnect();
         updateConnectionStatus("connected", isResume ? "正在恢复…" : "已连接");
         updateModeControls();
         if (isResume && sessionId && resumeToken) {
@@ -171,19 +224,23 @@
             session_id: sessionId,
             resume_token: resumeToken,
           });
+          startResumeTimeout(socket, generation);
         } else {
           $("connectionInfo").style.display = "block";
           updateConnectionInfo("连接成功，可以创建或加入房间");
         }
       };
-      ws.onmessage = function (event) {
+      socket.onmessage = function (event) {
+        if (ws !== socket || generation !== connectionGeneration) return;
         try {
           handleServerMessage(JSON.parse(event.data));
         } catch (error) {
           console.error("Invalid message from server:", event.data, error);
         }
       };
-      ws.onclose = function () {
+      socket.onclose = function () {
+        if (ws !== socket || generation !== connectionGeneration) return;
+        clearConnectionTimer();
         ws = null;
         isConnected = false;
         roomReady = false;
@@ -194,10 +251,16 @@
           updateConnectionStatus("disconnected", "未连接");
           return;
         }
-        updateConnectionStatus("connecting", "连接中断，等待恢复…");
-        scheduleReconnect();
+        if (sessionId && resumeToken && currentRoom) {
+          updateConnectionStatus("connecting", "连接中断，等待恢复…");
+          scheduleReconnect();
+        } else {
+          updateConnectionStatus("disconnected", "连接已断开");
+          updateModeControls();
+        }
       };
-      ws.onerror = function () {
+      socket.onerror = function () {
+        if (ws !== socket || generation !== connectionGeneration) return;
         if (!isResume) updateConnectionStatus("disconnected", "连接错误");
       };
     } catch (error) {
@@ -205,6 +268,33 @@
       if (isResume) scheduleReconnect();
       else alert("连接失败: " + error.message);
     }
+  }
+
+  function enterLocalMode() {
+    intentionalDisconnect = true;
+    cancelReconnect();
+    clearConnectionTimer();
+    connectionGeneration++;
+    var socket = ws;
+    ws = null;
+    isConnected = false;
+    roomReady = false;
+    if (socket && socket.readyState < WebSocket.CLOSING) socket.close();
+    updateConnectionStatus("local", "本地模式");
+    updateModeControls();
+    updateChatAvailability();
+  }
+
+  function ensurePvpConnection() {
+    intentionalDisconnect = false;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      isConnected = true;
+      updateConnectionStatus("connected", "已连接");
+      updateModeControls();
+      return;
+    }
+    updateConnectionStatus("connecting", "正在连接…");
+    openSocket(Boolean(sessionId && currentRoom));
   }
 
   window.connectToServer = function () {
@@ -223,8 +313,11 @@
     intentionalDisconnect = true;
     cancelReconnect();
     if (currentRoom) sendJson({ type: "leave_room", room_id: currentRoom });
-    if (ws) ws.close();
+    clearConnectionTimer();
+    connectionGeneration++;
+    var socket = ws;
     ws = null;
+    if (socket && socket.readyState < WebSocket.CLOSING) socket.close();
     isConnected = false;
     clearOnlineRoom("已断开");
     updateConnectionStatus("disconnected", "未连接");
@@ -242,6 +335,7 @@
     swapPending = false;
     clearResumeCredentials();
     resetRoomChat();
+    hideGameResult();
     $("playerInfo").style.display = "none";
     updateChatAvailability();
     if (message) updateConnectionInfo(message);
@@ -258,6 +352,7 @@
   function handleServerMessage(message) {
     switch (message.type) {
       case "room_created":
+        hideGameResult();
         currentRoom = message.room_id;
         roomId = message.room_id;
         roomReady = false;
@@ -294,10 +389,12 @@
         break;
 
       case "turn_applied":
+        if (!isCurrentRoomMessage(message)) break;
         applyAuthoritativeTurn(message);
         break;
 
       case "game_reset":
+        if (!isCurrentRoomMessage(message)) break;
         applyRoomConfig(message.rule_config);
         gameState = message.game_state
           ? rehydrateGameState(message.game_state)
@@ -311,6 +408,7 @@
         break;
 
       case "session_resumed":
+        clearConnectionTimer();
         cancelReconnect();
         currentRoom = message.room_id;
         roomId = message.room_id;
@@ -336,6 +434,7 @@
         updateUnreadBadge();
         updateUI();
         renderBoard();
+        hideGameResult();
         updateJumpLog("已恢复原房间");
         if (gameState.isGameOver) showGameResult();
         break;
@@ -344,6 +443,7 @@
         break;
 
       case "session_error":
+        clearConnectionTimer();
         if (message.code === "SESSION_ACTIVE") {
           if (ws) ws.close();
           else scheduleReconnect();
@@ -355,6 +455,7 @@
         break;
 
       case "chat_message":
+        if (!isCurrentRoomMessage(message)) break;
         receiveChatMessage(message);
         break;
 
@@ -363,6 +464,7 @@
         break;
 
       case "player_temporarily_disconnected":
+        if (!isCurrentRoomMessage(message)) break;
         opponentOffline = true;
         isMyTurn = false;
         updateChatAvailability();
@@ -371,6 +473,7 @@
         break;
 
       case "player_reconnected":
+        if (!isCurrentRoomMessage(message)) break;
         opponentOffline = false;
         isMyTurn = gameState.currentPlayer === playerSymbol && !gameState.isGameOver;
         updateChatAvailability();
@@ -379,12 +482,14 @@
         break;
 
       case "player_disconnected":
+        if (!isCurrentRoomMessage(message)) break;
         alert("对手已离开或恢复超时");
         clearOnlineRoom("对手已离开，请创建或加入新房间");
         resetGameLocal();
         break;
 
       case "swap_request_sent":
+        if (!isCurrentRoomMessage(message)) break;
         swapPending = true;
         swapCooldownUntil = message.cooldown_until;
         updateSwapButton();
@@ -392,6 +497,7 @@
         break;
 
       case "swap_request":
+        if (!isCurrentRoomMessage(message)) break;
         swapPending = true;
         swapCooldownUntil = message.cooldown_until;
         updateSwapButton();
@@ -403,6 +509,7 @@
         break;
 
       case "swap_result":
+        if (!isCurrentRoomMessage(message)) break;
         swapPending = false;
         swapCooldownUntil = message.cooldown_until || swapCooldownUntil;
         if (message.accepted) {
@@ -418,6 +525,7 @@
         break;
 
       case "swap_unavailable":
+        if (!isCurrentRoomMessage(message)) break;
         swapPending = false;
         if (message.cooldown_until) swapCooldownUntil = message.cooldown_until;
         updateSwapButton();
@@ -434,6 +542,13 @@
       default:
         console.warn("未知消息类型:", message.type, message);
     }
+  }
+
+  function isCurrentRoomMessage(message) {
+    return Boolean(
+      message && message.room_id && currentRoom &&
+      gameConfig.opponentMode === "pvp" && message.room_id === currentRoom
+    );
   }
 
   function normalizeTurn(turn) {
@@ -520,7 +635,7 @@
     pendingOnlineMove = null;
     stateVersion = 0;
     swapPending = false;
-    $("gameStatus").style.display = "none";
+    hideGameResult();
     initGame();
   }
 
@@ -583,12 +698,12 @@
     stateVersion = 0;
     playerSymbol = nextConfig.opponentMode === "pvp" ? null : "X";
     isMyTurn = nextConfig.opponentMode !== "pvp";
-    chatMessages = [];
-    renderChat();
-    updateModeControls();
-    updateUI();
-    renderBoard();
-    updateChatAvailability();
+    initGame();
+    if (nextConfig.opponentMode === "pvp") {
+      ensurePvpConnection();
+    } else {
+      enterLocalMode();
+    }
     closeSettings();
     updateJumpLog(
       "已切换为" + modeLabel(nextConfig.boardVariant) + " · " +
@@ -730,6 +845,11 @@
         totals.X + " - O: " + totals.O;
     }
     updateJumpLog("游戏结束");
+  }
+
+  function hideGameResult() {
+    $("gameStatus").style.display = "none";
+    $("winnerInfo").textContent = "";
   }
 
   function clearJumpLog() {
@@ -1137,7 +1257,7 @@
 
   function initGame() {
     clearJumpLog();
-    $("gameStatus").style.display = "none";
+    hideGameResult();
     if (gameConfig.opponentMode !== "pvp") {
       isMyTurn = gameState.currentPlayer === "X";
     }
@@ -1203,7 +1323,6 @@
     var autoUrl = wsProtocol + location.host;
     $("serverUrl").value = lastServerUrl || autoUrl;
     lastServerUrl = $("serverUrl").value;
-    intentionalDisconnect = false;
-    openSocket(Boolean(sessionId && currentRoom));
+    ensurePvpConnection();
   };
 })();

@@ -131,6 +131,10 @@ button {
     color: #fde68a;
 }
 
+.status-local {
+    color: #bfdbfe;
+}
+
 .game-stage {
     min-width: 0;
     min-height: 0;

@@ -121,7 +121,7 @@ test("starting or resetting a local AI game enables the human board before rende
 test("an online board freezes across disconnects and clears stale pending moves on resume", () => {
   assert.match(
     main,
-    /ws\.onclose\s*=\s*function\s*\(\)\s*\{[\s\S]*roomReady\s*=\s*false;[\s\S]*isMyTurn\s*=\s*false;[\s\S]*renderBoard\(\);/
+    /socket\.onclose\s*=\s*function\s*\(\)\s*\{[\s\S]*roomReady\s*=\s*false;[\s\S]*isMyTurn\s*=\s*false;[\s\S]*renderBoard\(\);/
   );
   assert.match(
     main,
@@ -142,4 +142,73 @@ test("leaving a room clears chat state and invalidates in-flight image compressi
   );
   assert.match(main, /chatImageRequestId\+\+;/);
   assert.match(main, /if \(requestId !== chatImageRequestId\) return;/);
+});
+
+test("websocket recovery times out stalled handshakes and ignores stale socket callbacks", () => {
+  assert.match(main, /CONNECT_TIMEOUT_MS\s*=\s*10\s*\*\s*1000/);
+  assert.match(main, /var connectionGeneration = 0;/);
+  assert.match(main, /function clearConnectionTimer\(\)/);
+  assert.match(
+    main,
+    /connectionTimer\s*=\s*window\.setTimeout\([\s\S]*socket\.readyState !== WebSocket\.CONNECTING[\s\S]*scheduleReconnect\(\)/
+  );
+  assert.match(main, /if \(ws !== socket \|\| generation !== connectionGeneration\) return;/);
+  const socketOpen = main.slice(main.indexOf("function openSocket"), main.indexOf("window.connectToServer"));
+  assert.doesNotMatch(socketOpen, /reconnectAttempt\s*=\s*0/);
+});
+
+test("room resume has an application-level timeout after websocket open", () => {
+  assert.match(main, /function startResumeTimeout\(socket, generation\)/);
+  const resumeTimeout = main.slice(main.indexOf("function startResumeTimeout"), main.indexOf("function scheduleReconnect"));
+  assert.match(resumeTimeout, /CONNECT_TIMEOUT_MS/);
+  assert.match(resumeTimeout, /socket\.close\(\)/);
+  const socketOpen = main.slice(main.indexOf("function openSocket"), main.indexOf("function enterLocalMode"));
+  assert.match(socketOpen, /type:\s*"resume_session"[\s\S]*startResumeTimeout\(socket, generation\);/);
+  const resumed = main.slice(main.indexOf('case "session_resumed":'), main.indexOf('case "resume_confirmed":'));
+  assert.match(resumed, /clearConnectionTimer\(\);/);
+});
+
+test("an idle pvp socket reports disconnected instead of pretending to recover a room", () => {
+  const socketOpen = main.slice(main.indexOf("function openSocket"), main.indexOf("function enterLocalMode"));
+  assert.match(
+    socketOpen,
+    /if \(sessionId && resumeToken && currentRoom\)[\s\S]*scheduleReconnect\(\);[\s\S]*updateConnectionStatus\("disconnected", "连接已断开"\)/
+  );
+});
+
+test("AI modes close websocket transport and pvp mode reconnects automatically", () => {
+  assert.match(main, /function enterLocalMode\(\)/);
+  assert.match(
+    main,
+    /function enterLocalMode\(\)[\s\S]*socket\.close\(\)[\s\S]*updateConnectionStatus\("local", "本地模式"\)/
+  );
+  assert.match(main, /function ensurePvpConnection\(\)/);
+  assert.match(
+    main,
+    /nextConfig\.opponentMode === "pvp"[\s\S]*ensurePvpConnection\(\)[\s\S]*enterLocalMode\(\)/
+  );
+});
+
+test("every new-game boundary clears the result overlay and stale room events are ignored", () => {
+  assert.match(main, /function hideGameResult\(\)[\s\S]*winnerInfo[\s\S]*textContent = ""/);
+  assert.match(main, /function initGame\(\)[\s\S]*hideGameResult\(\);/);
+  assert.match(main, /case "room_created":[\s\S]*hideGameResult\(\);/);
+  const resumed = main.slice(main.indexOf('case "session_resumed":'), main.indexOf('case "resume_confirmed":'));
+  assert.match(resumed, /hideGameResult\(\);/);
+  assert.match(main, /function isCurrentRoomMessage\(message\)/);
+  assert.match(main, /case "turn_applied":[\s\S]*if \(!isCurrentRoomMessage\(message\)\) break;/);
+  for (const type of [
+    "chat_message",
+    "player_temporarily_disconnected",
+    "player_reconnected",
+    "player_disconnected",
+    "swap_request_sent",
+    "swap_request",
+    "swap_result",
+    "swap_unavailable",
+  ]) {
+    const start = main.indexOf(`case "${type}":`);
+    const end = main.indexOf("break;", start);
+    assert.match(main.slice(start, end), /if \(!isCurrentRoomMessage\(message\)\)/);
+  }
 });

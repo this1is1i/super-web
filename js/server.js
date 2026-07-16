@@ -227,7 +227,9 @@ function destroyRoom(room, exceptWs) {
     clearReconnectTimer(player);
     sessions.delete(player.sessionId);
     const playerWs = player.ws;
-    if (playerWs !== exceptWs) sendJson(playerWs, { type: "player_disconnected" });
+    if (playerWs !== exceptWs) {
+      sendJson(playerWs, { type: "player_disconnected", room_id: room.id });
+    }
     unbindConnection(playerWs, player);
     player.ws = null;
   });
@@ -515,7 +517,11 @@ wss.on("connection", (ws) => {
           });
           room.players.forEach((other) => {
             if (other !== player) {
-              sendJson(other.ws, { type: "player_reconnected", player_symbol: player.symbol });
+              sendJson(other.ws, {
+                type: "player_reconnected",
+                room_id: room.id,
+                player_symbol: player.symbol,
+              });
             }
           });
         }
@@ -555,22 +561,27 @@ wss.on("connection", (ws) => {
             !swapRoom || !requester || swapRoom.players.length !== 2 ||
             !swapRoom.players.every(isOnline) || !opponent
           ) {
-            ws.send(JSON.stringify({ type: "swap_unavailable", message: "需要双方都在房间内才能交换先后手" }));
+            sendJson(ws, {
+              type: "swap_unavailable",
+              room_id: data.room_id,
+              message: "需要双方都在房间内才能交换先后手",
+            });
             return;
           }
           if (Rules.hasAnyMove(swapRoom.gameState)) {
-            ws.send(JSON.stringify({ type: "swap_unavailable", message: "已有玩家落子，不能再交换先后手" }));
+            sendJson(ws, { type: "swap_unavailable", room_id: swapRoom.id, message: "已有玩家落子，不能再交换先后手" });
             return;
           }
 
           const now = Date.now();
           if (swapRoom.pendingSwap) {
-            ws.send(JSON.stringify({ type: "swap_unavailable", message: "已有交换请求等待确认" }));
+            sendJson(ws, { type: "swap_unavailable", room_id: swapRoom.id, message: "已有交换请求等待确认" });
             return;
           }
           if (now < swapRoom.nextSwapRequestAt) {
             ws.send(JSON.stringify({
               type: "swap_unavailable",
+              room_id: swapRoom.id,
               message: "交换请求冷却中",
               cooldown_until: swapRoom.nextSwapRequestAt,
             }));
@@ -582,10 +593,12 @@ wss.on("connection", (ws) => {
 
           ws.send(JSON.stringify({
             type: "swap_request_sent",
+            room_id: swapRoom.id,
             cooldown_until: swapRoom.nextSwapRequestAt,
           }));
           sendJson(opponent.ws, {
             type: "swap_request",
+            room_id: swapRoom.id,
             requester_symbol: requester.symbol,
             cooldown_until: swapRoom.nextSwapRequestAt,
           });
@@ -599,7 +612,7 @@ wss.on("connection", (ws) => {
           const responder = swapRoom && swapRoom.players.find((player) => player.ws === ws);
           const pending = swapRoom && swapRoom.pendingSwap;
           if (!swapRoom || !responder || !pending || pending.requesterWs === ws) {
-            ws.send(JSON.stringify({ type: "swap_unavailable", message: "交换请求已失效" }));
+            sendJson(ws, { type: "swap_unavailable", room_id: data.room_id, message: "交换请求已失效" });
             return;
           }
 
@@ -614,6 +627,7 @@ wss.on("connection", (ws) => {
           swapRoom.players.forEach((player) => {
             sendJson(player.ws, {
               type: "swap_result",
+              room_id: swapRoom.id,
               accepted: accepted,
               player_symbol: player.symbol,
               is_your_turn: player.symbol === swapRoom.gameState.currentPlayer,
@@ -702,6 +716,7 @@ wss.on("connection", (ws) => {
           moveRoom.stateVersion++;
           const applied = {
             type: "turn_applied",
+            room_id: moveRoom.id,
             client_move_id: data.client_move_id,
             state_version: moveRoom.stateVersion,
             turn,
@@ -742,6 +757,7 @@ wss.on("connection", (ws) => {
           resetRoom.players.forEach((player) => {
             sendJson(player.ws, {
               type: "game_reset",
+              room_id: resetRoom.id,
               player_symbol: player.symbol,
               is_your_turn: player.symbol === "X",
               rule_config: resetRoom.ruleConfig,
@@ -851,6 +867,7 @@ wss.on("connection", (ws) => {
           if (player !== disconnectedPlayer) {
             sendJson(player.ws, {
               type: "player_temporarily_disconnected",
+              room_id: room.id,
               player_symbol: disconnectedPlayer.symbol,
               reconnect_deadline: disconnectedPlayer.reconnectDeadline,
             });

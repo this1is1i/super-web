@@ -277,6 +277,7 @@ test("cycle mode derives the first fixed exchange pair when swapEvery is 1", asy
       room.first.next("turn_applied"), room.second.next("turn_applied"),
     ]);
     assert.deepEqual(firstApplied, secondApplied);
+    assert.equal(firstApplied.room_id, room.created.room_id);
     assert.deepEqual(firstApplied.turn.exchangePair, [0, 1]);
     assert.deepEqual(firstApplied.result.exchange, [0, 1]);
     assert.equal(firstApplied.state_version, 1);
@@ -457,6 +458,7 @@ test("reset_game preserves rule_config while resetting state version mapping sch
       room.first.next("game_reset"), room.second.next("game_reset"),
     ]);
     for (const reset of [firstReset, secondReset]) {
+      assert.equal(reset.room_id, room.created.room_id);
       assert.deepEqual(reset.rule_config, config);
       assert.equal(reset.state_version, 0);
       assert.equal(reset.game_state.boardVariant, "cycle");

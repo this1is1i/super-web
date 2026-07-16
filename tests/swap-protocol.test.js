@@ -97,13 +97,15 @@ test("pre-game swap requires confirmation, swaps symbols, and enforces cooldown"
     await Promise.all([first.next("game_start"), second.next("game_start")]);
 
     first.send({ type: "request_swap", room_id: created.room_id });
-    await first.next("swap_request_sent");
-    await second.next("swap_request");
+    assert.equal((await first.next("swap_request_sent")).room_id, created.room_id);
+    assert.equal((await second.next("swap_request")).room_id, created.room_id);
     second.send({ type: "respond_swap", room_id: created.room_id, accepted: true });
 
     const [firstResult, secondResult] = await Promise.all([
       first.next("swap_result"), second.next("swap_result"),
     ]);
+    assert.equal(firstResult.room_id, created.room_id);
+    assert.equal(secondResult.room_id, created.room_id);
     assert.equal(firstResult.player_symbol, "O");
     assert.equal(firstResult.is_your_turn, false);
     assert.equal(secondResult.player_symbol, "X");
@@ -111,6 +113,7 @@ test("pre-game swap requires confirmation, swaps symbols, and enforces cooldown"
 
     first.send({ type: "request_swap", room_id: created.room_id });
     const cooldown = await first.next("swap_unavailable");
+    assert.equal(cooldown.room_id, created.room_id);
     assert.match(cooldown.message, /冷却/);
 
     second.send({
@@ -124,6 +127,7 @@ test("pre-game swap requires confirmation, swaps symbols, and enforces cooldown"
 
     first.send({ type: "request_swap", room_id: created.room_id });
     const afterMove = await first.next("swap_unavailable");
+    assert.equal(afterMove.room_id, created.room_id);
     assert.match(afterMove.message, /已有玩家落子/);
   } finally {
     if (first) first.close();
