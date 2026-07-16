@@ -66,18 +66,46 @@
   }
   FULL_BOARD_LINES.push(line);
 
-  function createInitialGameState() {
-    return {
-      boards: Array.from({ length: BOARD_COUNT }, function (_, index) {
-        return {
-          cells: Array(CELL_COUNT).fill(null),
-          winner: null,
-          winningPatterns: [],
-          isActive: index === CENTER_BOARD,
-          fromBoard: null,
-        };
-      }),
+  function getValidatedConfig(config) {
+    config = config || {};
+    var boardVariant = config.boardVariant === undefined ? "normal" : config.boardVariant;
+    var swapEvery = config.swapEvery === undefined ? 1 : config.swapEvery;
+    if (["normal", "cycle", "chaos"].indexOf(boardVariant) === -1) {
+      throw new Error("boardVariant must be normal, cycle, or chaos");
+    }
+    if (!Number.isInteger(swapEvery) || swapEvery < 1 || swapEvery > 20) {
+      throw new Error("swapEvery must be an integer from 1 through 20");
+    }
+    return { boardVariant: boardVariant, swapEvery: swapEvery };
+  }
+
+  function createInitialGameState(options) {
+    var config = getValidatedConfig(options);
+    var tiles = Array.from({ length: BOARD_COUNT }, function (_, index) {
+      return {
+        id: index,
+        cells: Array(CELL_COUNT).fill(null),
+        winner: null,
+        winningPatterns: [],
+        isActive: index === CENTER_BOARD,
+        fromTileId: null,
+        fromBoard: null,
+      };
+    });
+    var positionToTile = Array.from({ length: BOARD_COUNT }, function (_, index) {
+      return index;
+    });
+    var gameState = {
+      tiles: tiles,
+      positionToTile: positionToTile,
+      currentPosition: CENTER_BOARD,
+      // Compatibility view for the existing server/client during migration.
+      boards: tiles.slice(),
       currentBoard: CENTER_BOARD,
+      boardVariant: config.boardVariant,
+      swapEvery: config.swapEvery,
+      moveCount: 0,
+      cycleCursor: 0,
       currentPlayer: "X",
       scores: { X: 0, O: 0 },
       bonusScores: { X: 0, O: 0 },
@@ -88,6 +116,7 @@
       isGameOver: false,
       overallWinner: null,
     };
+    return rehydrateGameState(gameState);
   }
 
   function getWinningPatternIndexes(gameState, boardIndex, cellsOverride) {
@@ -216,7 +245,20 @@
     };
   }
 
+  function normalizeFullTilesAsDraw(gameState) {
+    gameState.tiles.forEach(function (tile) {
+      if (
+        tile.winner === null &&
+        tile.cells.every(function (cell) { return cell !== null; })
+      ) {
+        tile.winner = "draw";
+        tile.winningPatterns = [];
+      }
+    });
+  }
+
   function checkGameEnd(gameState) {
+    normalizeFullTilesAsDraw(gameState);
     var allBoardsEnded = gameState.boards.every(function (board) {
       return board.winner !== null;
     });
@@ -228,39 +270,292 @@
     return true;
   }
 
-  function applyMove(gameState, boardIndex, cellIndex, symbol) {
-    var board = gameState.boards[boardIndex];
-    board.cells[cellIndex] = symbol;
+  function getTileAtPosition(gameState, position) {
+    return gameState.tiles[gameState.positionToTile[position]];
+  }
+
+  function findTilePosition(gameState, tileId) {
+    return gameState.positionToTile.indexOf(tileId);
+  }
+
+  function syncPositionView(gameState) {
+    gameState.boards = gameState.positionToTile.map(function (tileId) {
+      return gameState.tiles[tileId];
+    });
+    gameState.currentBoard = gameState.currentPosition;
+    gameState.boards.forEach(function (tile) {
+      tile.fromBoard = tile.fromTileId === null
+        ? null
+        : findTilePosition(gameState, tile.fromTileId);
+    });
+  }
+
+  function rehydrateGameState(gameState) {
+    if (!gameState || !Array.isArray(gameState.tiles) || !Array.isArray(gameState.positionToTile)) {
+      throw new Error("game state is missing tiles or positionToTile");
+    }
+    var config = getValidatedConfig(gameState);
+    if (
+      gameState.positionToTile.length !== BOARD_COUNT ||
+      new Set(gameState.positionToTile).size !== BOARD_COUNT ||
+      !gameState.positionToTile.every(function (tileId) {
+        return Number.isInteger(tileId) && tileId >= 0 && tileId < BOARD_COUNT;
+      })
+    ) {
+      throw new Error("positionToTile must be a permutation of tile ids 0 through 8");
+    }
+    if (gameState.tiles.length !== BOARD_COUNT) {
+      throw new Error("tiles must contain exactly 9 entries");
+    }
+    gameState.tiles.forEach(function (tile, tileId) {
+      if (!tile || typeof tile !== "object" || tile.id !== tileId) {
+        throw new Error("each tile id must match its tiles array index");
+      }
+      if (!Array.isArray(tile.cells) || tile.cells.length !== CELL_COUNT) {
+        throw new Error("each tile cells array must contain exactly 9 entries");
+      }
+      if (!tile.cells.every(function (cell) {
+        return cell === null || cell === "X" || cell === "O";
+      })) {
+        throw new Error("each cell value must be null, X, or O");
+      }
+      if ([null, "X", "O", "draw"].indexOf(tile.winner) === -1) {
+        throw new Error("tile winner must be null, X, O, or draw");
+      }
+      if (!Array.isArray(tile.winningPatterns)) {
+        throw new Error("tile winningPatterns must be an array");
+      }
+      if (
+        new Set(tile.winningPatterns).size !== tile.winningPatterns.length ||
+        !tile.winningPatterns.every(function (patternIndex) {
+          return Number.isInteger(patternIndex) &&
+            patternIndex >= 0 && patternIndex < WINNING_PATTERNS.length;
+        })
+      ) {
+        throw new Error("tile winningPatterns must contain unique valid pattern indexes");
+      }
+      if (
+        tile.fromTileId !== null &&
+        (!Number.isInteger(tile.fromTileId) || tile.fromTileId < 0 || tile.fromTileId >= BOARD_COUNT)
+      ) {
+        throw new Error("tile fromTileId must be null or a valid tile id");
+      }
+    });
+    if (
+      !Number.isInteger(gameState.currentPosition) ||
+      gameState.currentPosition < 0 || gameState.currentPosition >= BOARD_COUNT
+    ) {
+      throw new Error("currentPosition must be a valid absolute position");
+    }
+    if (!Number.isInteger(gameState.moveCount) || gameState.moveCount < 0) {
+      throw new Error("moveCount must be a non-negative integer");
+    }
+    if (
+      !Number.isInteger(gameState.cycleCursor) ||
+      gameState.cycleCursor < 0 || gameState.cycleCursor >= BOARD_COUNT
+    ) {
+      throw new Error("cycleCursor must be a valid exchange sequence index");
+    }
+    validateRuntimeFields(gameState);
+    gameState.boardVariant = config.boardVariant;
+    gameState.swapEvery = config.swapEvery;
+    normalizeFullTilesAsDraw(gameState);
+    syncPositionView(gameState);
+    calculateBonuses(gameState);
+    gameState.isGameOver = false;
+    gameState.overallWinner = null;
+    checkGameEnd(gameState);
+    return gameState;
+  }
+
+  function isTilePlayable(tile) {
+    return tile.winner === null && tile.cells.some(function (cell) { return cell === null; });
+  }
+
+  function findFallbackPosition(gameState, activeTileId) {
+    var activeTile = gameState.tiles[activeTileId];
+    if (isTilePlayable(activeTile)) return findTilePosition(gameState, activeTileId);
+
+    var visited = new Set([activeTileId]);
+    var sourceTileId = activeTile.fromTileId;
+    while (sourceTileId !== null && !visited.has(sourceTileId)) {
+      visited.add(sourceTileId);
+      var sourceTile = gameState.tiles[sourceTileId];
+      if (isTilePlayable(sourceTile)) return findTilePosition(gameState, sourceTileId);
+      sourceTileId = sourceTile.fromTileId;
+    }
+
+    for (var position = 0; position < BOARD_COUNT; position++) {
+      if (isTilePlayable(getTileAtPosition(gameState, position))) return position;
+    }
+    return null;
+  }
+
+  function validateExchange(exchange) {
+    if (
+      !Array.isArray(exchange) || exchange.length !== 2 ||
+      !Number.isInteger(exchange[0]) || !Number.isInteger(exchange[1]) ||
+      exchange[0] < 0 || exchange[0] >= BOARD_COUNT ||
+      exchange[1] < 0 || exchange[1] >= BOARD_COUNT ||
+      exchange[0] === exchange[1]
+    ) {
+      throw new Error("exchange must contain two different valid positions");
+    }
+  }
+
+  function getLegalMoves(gameState) {
+    if (gameState.isGameOver) return [];
+    var position = gameState.currentPosition;
+    var tile = getTileAtPosition(gameState, position);
+    if (!tile || !isTilePlayable(tile)) return [];
+
+    var moves = [];
+    tile.cells.forEach(function (cell, cellIndex) {
+      if (cell === null) moves.push({ position: position, cellIndex: cellIndex });
+    });
+    return moves;
+  }
+
+  function requiresExchangeOnNextTurn(gameState) {
+    return (
+      (gameState.boardVariant === "cycle" || gameState.boardVariant === "chaos") &&
+      (gameState.moveCount + 1) % gameState.swapEvery === 0
+    );
+  }
+
+  function getCycleExchangeForNextTurn(gameState) {
+    if (gameState.boardVariant !== "cycle" || !requiresExchangeOnNextTurn(gameState)) {
+      return null;
+    }
+    return [gameState.cycleCursor, (gameState.cycleCursor + 1) % BOARD_COUNT];
+  }
+
+  function validateRuntimeFields(gameState) {
+    if (!gameState || typeof gameState !== "object") {
+      throw new Error("game state is required");
+    }
+    if (gameState.currentPlayer !== "X" && gameState.currentPlayer !== "O") {
+      throw new Error("currentPlayer must be X or O");
+    }
+    if (
+      !gameState.scores || typeof gameState.scores !== "object" || Array.isArray(gameState.scores) ||
+      !Number.isInteger(gameState.scores.X) || gameState.scores.X < 0 ||
+      !Number.isInteger(gameState.scores.O) || gameState.scores.O < 0
+    ) {
+      throw new Error("scores must contain non-negative integer X and O values");
+    }
+    if (typeof gameState.isGameOver !== "boolean") {
+      throw new Error("isGameOver must be a boolean");
+    }
+    if ([null, "X", "O", "draw"].indexOf(gameState.overallWinner) === -1) {
+      throw new Error("overallWinner must be null, X, O, or draw");
+    }
+  }
+
+  function validateTurn(gameState, turn) {
+    validateRuntimeFields(gameState);
+    if (!turn || typeof turn !== "object") throw new Error("turn is required");
+    if (!Number.isInteger(turn.position) || turn.position < 0 || turn.position >= BOARD_COUNT) {
+      throw new Error("turn.position must be a valid absolute position");
+    }
+    if (turn.position !== gameState.currentPosition) {
+      throw new Error("turn.position must equal the current position");
+    }
+    if (!Number.isInteger(turn.cellIndex) || turn.cellIndex < 0 || turn.cellIndex >= CELL_COUNT) {
+      throw new Error("turn.cellIndex must be a valid cell index");
+    }
+    if (turn.symbol !== "X" && turn.symbol !== "O") {
+      throw new Error("turn.symbol must be X or O");
+    }
+    if (turn.symbol !== gameState.currentPlayer) {
+      throw new Error("turn.symbol must equal the current player");
+    }
+    if (gameState.isGameOver) throw new Error("the game is already over");
+
+    var tile = getTileAtPosition(gameState, turn.position);
+    if (!tile || !isTilePlayable(tile) || tile.cells[turn.cellIndex] !== null) {
+      throw new Error("turn is not a legal move");
+    }
+
+    if (
+      gameState.boardVariant === "chaos" &&
+      requiresExchangeOnNextTurn(gameState)
+    ) {
+      validateExchange(turn.exchangePair);
+    }
+
+  }
+
+  function getTurnExchange(gameState, explicitExchange) {
+    if (!requiresExchangeOnNextTurn(gameState)) return null;
+
+    if (gameState.boardVariant === "cycle") {
+      var exchange = getCycleExchangeForNextTurn(gameState);
+      gameState.cycleCursor = (gameState.cycleCursor + 1) % BOARD_COUNT;
+      return exchange;
+    }
+    if (gameState.boardVariant === "chaos") {
+      validateExchange(explicitExchange);
+      return explicitExchange.slice();
+    }
+    throw new Error("unknown board variant: " + gameState.boardVariant);
+  }
+
+  function applyTurn(gameState, turn) {
+    validateTurn(gameState, turn);
+    var boardIndex = turn.position;
+    var cellIndex = turn.cellIndex;
+    var symbol = turn.symbol;
+    var explicitExchange = turn.exchangePair;
+    var activeTile = getTileAtPosition(gameState, boardIndex);
+    var activeTileId = activeTile.id;
+    activeTile.cells[cellIndex] = symbol;
 
     var winningPatterns = getWinningPatternIndexes(gameState, boardIndex);
     if (winningPatterns.length > 0) {
-      board.winner = symbol;
-      board.winningPatterns = winningPatterns;
+      activeTile.winner = symbol;
+      activeTile.winningPatterns = winningPatterns;
       gameState.scores[symbol]++;
-      var wonNextBoard = findNextBoardAfterWin(gameState, boardIndex, cellIndex);
-      if (wonNextBoard !== null) {
-        gameState.currentBoard = wonNextBoard;
-        gameState.boards[wonNextBoard].fromBoard = boardIndex;
-      }
-    } else if (checkMiniBoardDraw(gameState, boardIndex)) {
-      board.winner = "draw";
-      board.winningPatterns = [];
-      var drawNextBoard = findNextBoardAfterWin(gameState, boardIndex, cellIndex);
-      if (drawNextBoard !== null) {
-        gameState.currentBoard = drawNextBoard;
-        gameState.boards[drawNextBoard].fromBoard = boardIndex;
-      }
-    } else if (!gameState.boards[cellIndex].winner) {
-      gameState.currentBoard = cellIndex;
-      gameState.boards[cellIndex].fromBoard = boardIndex;
-    } else {
-      gameState.currentBoard = boardIndex;
+    } else if (activeTile.cells.every(function (cell) { return cell !== null; })) {
+      activeTile.winner = "draw";
+      activeTile.winningPatterns = [];
     }
 
+    var exchange = getTurnExchange(gameState, explicitExchange);
+    gameState.moveCount++;
+    if (exchange) {
+      var firstTileId = gameState.positionToTile[exchange[0]];
+      gameState.positionToTile[exchange[0]] = gameState.positionToTile[exchange[1]];
+      gameState.positionToTile[exchange[1]] = firstTileId;
+    }
+
+    var nextPosition = cellIndex;
+    if (!isTilePlayable(getTileAtPosition(gameState, nextPosition))) {
+      nextPosition = findFallbackPosition(gameState, activeTileId);
+    }
+    if (nextPosition !== null) {
+      gameState.currentPosition = nextPosition;
+      var nextTile = getTileAtPosition(gameState, nextPosition);
+      if (nextTile.id !== activeTileId) nextTile.fromTileId = activeTileId;
+    }
+
+    syncPositionView(gameState);
     gameState.currentPlayer = symbol === "X" ? "O" : "X";
     calculateBonuses(gameState);
     var gameOver = checkGameEnd(gameState);
-    return { gameOver: gameOver, winningPatterns: winningPatterns };
+    return {
+      gameOver: gameOver,
+      winningPatterns: winningPatterns,
+      exchange: exchange,
+    };
+  }
+
+  function applyMove(gameState, boardIndex, cellIndex, symbol) {
+    return applyTurn(gameState, {
+      position: boardIndex,
+      cellIndex: cellIndex,
+      symbol: symbol,
+    });
   }
 
   function hasAnyMove(gameState) {
@@ -285,6 +580,13 @@
     calculateBonuses: calculateBonuses,
     getTotalScores: getTotalScores,
     checkGameEnd: checkGameEnd,
+    getTileAtPosition: getTileAtPosition,
+    findTilePosition: findTilePosition,
+    rehydrateGameState: rehydrateGameState,
+    getLegalMoves: getLegalMoves,
+    requiresExchangeOnNextTurn: requiresExchangeOnNextTurn,
+    getCycleExchangeForNextTurn: getCycleExchangeForNextTurn,
+    applyTurn: applyTurn,
     applyMove: applyMove,
     hasAnyMove: hasAnyMove,
   };

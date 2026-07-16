@@ -12,6 +12,7 @@
 				<div class="topbar-actions">
 					<button class="icon-button" id="rulesButton" onclick="openRulesModal()" aria-label="查看游戏规则">📋 规则</button>
 					<button class="icon-button" id="settingsButton" onclick="openSettings()" aria-label="打开连接与房间设置">☰ 设置</button>
+					<button class="icon-button chat-button" id="chatButton" onclick="openChatModal()" aria-label="打开对话" disabled>💬 对话</button>
 				</div>
 				<h1 class="game-title">超级井字棋</h1>
 				<div class="connection-status" id="connectionStatus">
@@ -55,8 +56,17 @@
 					<button class="action-button swap-button" id="swapButton" onclick="requestSwap()" style="display: none;">⇄ 交换先后手</button>
 				</div>
 
-				<section class="jump-log" id="jumpLog" aria-label="最近三条步骤历史" aria-live="polite">
-					<div>等待玩家加入...</div>
+				<section class="activity-card" id="activityCard" aria-label="对局动态">
+					<div class="activity-card-header">
+						<strong id="activityTitle">最近步骤</strong>
+						<button class="activity-toggle" id="activityToggle" onclick="toggleActivityView()" aria-pressed="false">切换到消息</button>
+					</div>
+					<div class="jump-log activity-list" id="jumpLog" aria-label="最近三条步骤历史" aria-live="polite">
+						<div>等待玩家加入...</div>
+					</div>
+					<div class="chat-preview activity-list" id="chatPreview" aria-label="最新三条消息" aria-live="polite" hidden>
+						<div>暂无消息</div>
+					</div>
 				</section>
 			</main>
 		</div>
@@ -71,6 +81,28 @@
 				<button class="close-button" onclick="closeSettings()" aria-label="收起设置">×</button>
 			</div>
 
+			<section class="settings-section">
+				<h3>对局模式</h3>
+				<label class="field-label" for="boardVariant">规则模式</label>
+				<select id="boardVariant" class="connection-input" onchange="updateModeControls()">
+					<option value="normal" selected>普通</option>
+					<option value="cycle">循环</option>
+					<option value="chaos">混沌</option>
+				</select>
+				<label class="field-label mode-field-label" for="opponentMode">对手模式</label>
+				<select id="opponentMode" class="connection-input" onchange="updateModeControls()">
+					<option value="pvp" selected>对战</option>
+					<option value="ai_normal">普通人机</option>
+					<option value="ai_hard">困难人机</option>
+				</select>
+				<div id="swapFrequencyField" class="mode-frequency" hidden>
+					<label class="field-label" for="swapEvery">每几手交换一次</label>
+					<input type="number" id="swapEvery" class="connection-input" min="1" max="20" value="1" inputmode="numeric">
+				</div>
+				<button class="connection-button mode-apply-button full-button" id="applyModeButton" onclick="applyGameConfig()">应用并开始新局</button>
+				<p class="drawer-hint">默认普通规则与在线对战；修改配置会开始一局新游戏。</p>
+			</section>
+
 			<section class="settings-section connection-panel" id="connectionPanel">
 				<h3>连接设置</h3>
 				<label class="field-label" for="serverUrl">WebSocket 服务器</label>
@@ -82,7 +114,7 @@
 				<div id="connectionInfo" class="room-info" style="display: none;"></div>
 			</section>
 
-			<section class="settings-section">
+			<section class="settings-section" id="roomSettingsSection">
 				<h3>房间设置</h3>
 				<div id="roomControls" style="display: none;">
 					<button class="connection-button create-room-btn full-button" onclick="createRoom()">创建新房间</button>
@@ -100,6 +132,28 @@
 			</section>
 		</aside>
 
+		<div class="modal-overlay" id="chatModal" aria-hidden="true" onclick="closeChatOnBackdrop(event)">
+			<section class="chat-modal" role="dialog" aria-modal="true" aria-labelledby="chatTitle">
+				<div class="modal-header">
+					<div>
+						<div class="drawer-eyebrow">房间对话</div>
+						<h2 id="chatTitle">与对手聊天</h2>
+					</div>
+					<button class="close-button" onclick="closeChatModal()" aria-label="关闭对话">×</button>
+				</div>
+				<div class="chat-messages" id="chatMessages" aria-live="polite"></div>
+				<div class="chat-image-preview" id="chatImagePreview" hidden></div>
+				<div class="chat-composer">
+					<textarea id="chatText" class="chat-text" maxlength="500" rows="2" placeholder="输入消息，最多 500 字"></textarea>
+					<div class="chat-composer-actions">
+						<label class="chat-image-picker" for="chatImage">选择图片</label>
+						<input type="file" id="chatImage" accept="image/jpeg,image/png,image/webp" hidden>
+						<button class="connection-button chat-send-button" id="chatSendButton" onclick="sendChatMessage()">发送</button>
+					</div>
+				</div>
+			</section>
+		</div>
+
 		<div class="modal-overlay is-open" id="rulesModal" aria-hidden="false" onclick="closeRulesOnBackdrop(event)">
 			<section class="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
 				<div class="modal-header">
@@ -112,6 +166,8 @@
 				<ul class="rules-list">
 					<li>游戏包含 9 个 3×3 小棋盘，初始从中心棋盘开始，X 先手。</li>
 					<li>落子所在的小格决定对手下一步要进入的小棋盘。</li>
+					<li>循环模式按固定顺序交换两个小棋盘的内容；混沌模式则随机交换两个小棋盘的内容。</li>
+					<li>特殊模式仍按绝对位置决定下一步跳转，可在设置中选择每 N 手交换一次。</li>
 					<li>橙色光晕始终指示当前正在操作的棋盘；绿色光晕预示赢下当前小局后的目标棋盘。</li>
 					<li>赢得一个小棋盘得 1 分；普通大棋盘三连额外加 2 分。</li>
 					<li>三个小棋盘具有共同获胜线型但未形成对应长线时加 3 分。</li>
@@ -132,6 +188,7 @@
 		</div>
 
 		<script src="/js/game-rules.js"></script>
+		<script src="/js/ai-player.js"></script>
 		<script src="/js/main.js"></script>
 	</body>
 </html>

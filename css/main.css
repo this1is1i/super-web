@@ -9,7 +9,7 @@
     --green: #22c55e;
     --x-color: #ef4444;
     --o-color: #3b82f6;
-    --board-size: min(72vw, calc(100dvh - 245px), 700px);
+    --board-size: min(72vw, calc(100dvh - 263px), 700px);
 }
 
 * {
@@ -83,6 +83,12 @@ button {
     font-weight: 700;
 }
 
+.icon-button:disabled {
+    opacity: 0.48;
+    cursor: not-allowed;
+    transform: none;
+}
+
 .icon-button:hover,
 .close-button:hover {
     background: rgba(255, 255, 255, 0.2);
@@ -130,7 +136,7 @@ button {
     min-height: 0;
     width: 100%;
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto 64px;
+    grid-template-rows: auto minmax(0, 1fr) auto 82px;
     align-items: center;
     justify-items: center;
     gap: clamp(6px, 1vh, 10px);
@@ -264,6 +270,55 @@ button {
         inset 0 0 0 3px rgba(34, 197, 94, 0.9);
 }
 
+.mini-board.active.playable {
+    z-index: 11;
+    border-color: #c2410c;
+    transform: scale(1.035);
+    animation: playable-board-pulse 1.8s ease-in-out infinite;
+}
+
+.mini-board.active.playable.predicted-next {
+    animation: none;
+    box-shadow:
+        0 0 0 2px rgba(194, 65, 12, 0.95),
+        0 0 28px 8px rgba(245, 158, 11, 0.92),
+        0 0 50px 16px rgba(234, 88, 12, 0.62),
+        inset 0 0 0 3px rgba(34, 197, 94, 0.9);
+}
+
+@keyframes playable-board-pulse {
+    0%, 100% {
+        box-shadow:
+            0 0 0 2px rgba(194, 65, 12, 0.9),
+            0 0 24px 6px rgba(245, 158, 11, 0.84),
+            0 0 42px 12px rgba(234, 88, 12, 0.52);
+    }
+    50% {
+        box-shadow:
+            0 0 0 3px rgba(194, 65, 12, 1),
+            0 0 32px 10px rgba(245, 158, 11, 0.96),
+            0 0 56px 18px rgba(234, 88, 12, 0.68);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mini-board.active.playable {
+        animation: none;
+        box-shadow:
+            0 0 0 2px rgba(194, 65, 12, 0.95),
+            0 0 28px 8px rgba(245, 158, 11, 0.92),
+            0 0 50px 16px rgba(234, 88, 12, 0.62);
+    }
+
+    .mini-board.active.playable.predicted-next {
+        box-shadow:
+            0 0 0 2px rgba(194, 65, 12, 0.95),
+            0 0 28px 8px rgba(245, 158, 11, 0.92),
+            0 0 50px 16px rgba(234, 88, 12, 0.62),
+            inset 0 0 0 3px rgba(34, 197, 94, 0.9);
+    }
+}
+
 .mini-board.won-x {
     background: linear-gradient(135deg, #ef4444, #b91c1c);
     box-shadow: 0 0 16px rgba(239, 68, 68, 0.65);
@@ -312,6 +367,12 @@ button {
 .cell.o {
     color: white;
     background: var(--o-color);
+}
+
+.cell.pending {
+    opacity: 0.58;
+    outline: 2px dashed rgba(255, 255, 255, 0.92);
+    outline-offset: -4px;
 }
 
 .board-label,
@@ -377,14 +438,11 @@ button {
     background: linear-gradient(135deg, #9333ea, #6b21a8);
 }
 
-.jump-log {
+.activity-card {
     width: min(760px, 94vw);
-    height: 64px;
+    height: 82px;
     min-height: 0;
-    padding: 5px 14px;
-    display: grid;
-    grid-template-rows: repeat(3, 1fr);
-    gap: 1px;
+    padding: 5px 12px 6px;
     overflow: hidden;
     border: 1px solid var(--line);
     border-radius: 14px;
@@ -395,7 +453,52 @@ button {
     font-size: clamp(0.68rem, 1.3vw, 0.8rem);
 }
 
-.jump-log div {
+.activity-card-header {
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    color: #475569;
+    font-size: 0.68rem;
+}
+
+.activity-toggle {
+    min-height: 19px;
+    padding: 1px 8px;
+    border: 1px solid rgba(124, 58, 237, 0.24);
+    border-radius: 999px;
+    color: #6d28d9;
+    background: #f5f3ff;
+    cursor: pointer;
+    font-size: 0.64rem;
+    font-weight: 800;
+}
+
+.activity-list {
+    height: 51px;
+    min-height: 0;
+}
+
+.jump-log {
+    display: grid;
+    grid-template-rows: repeat(3, 1fr);
+    gap: 1px;
+    overflow: hidden;
+}
+
+.chat-preview {
+    display: grid;
+    grid-template-rows: repeat(3, 1fr);
+    gap: 1px;
+    overflow: hidden;
+}
+
+.activity-list[hidden] {
+    display: none;
+}
+
+.activity-list div {
     min-width: 0;
     line-height: 17px;
     white-space: nowrap;
@@ -403,7 +506,7 @@ button {
     text-overflow: ellipsis;
 }
 
-.jump-log div:last-child {
+.activity-list div:last-child {
     color: #111827;
     font-weight: 700;
 }
@@ -519,6 +622,16 @@ button {
     color: #64748b;
     font-size: 0.76rem;
     font-weight: 800;
+}
+
+.mode-field-label,
+.mode-frequency {
+    margin-top: 10px;
+}
+
+.mode-apply-button {
+    margin-top: 12px;
+    background: linear-gradient(135deg, #7c3aed, #4f46e5);
 }
 
 .connection-input {
@@ -664,6 +777,116 @@ button {
     box-shadow: 0 26px 65px rgba(2, 6, 23, 0.42);
 }
 
+.chat-modal {
+    width: min(620px, 94vw);
+    height: min(76dvh, 680px);
+    padding: clamp(18px, 3vw, 26px);
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    gap: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: 22px;
+    background: #f8fafc;
+    box-shadow: 0 26px 65px rgba(2, 6, 23, 0.42);
+}
+
+.chat-messages {
+    min-height: 0;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    background: white;
+}
+
+.chat-message {
+    align-self: flex-start;
+    max-width: min(82%, 430px);
+    padding: 8px 10px;
+    border-radius: 12px 12px 12px 3px;
+    color: #334155;
+    background: #e2e8f0;
+    overflow-wrap: anywhere;
+}
+
+.chat-message.is-mine {
+    align-self: flex-end;
+    border-radius: 12px 12px 3px 12px;
+    color: white;
+    background: #6d28d9;
+}
+
+.chat-message img {
+    display: block;
+    max-width: min(100%, 360px);
+    max-height: 320px;
+    border-radius: 9px;
+}
+
+.chat-message-meta {
+    margin-top: 4px;
+    font-size: 0.65rem;
+    opacity: 0.72;
+}
+
+.chat-image-preview {
+    min-height: 42px;
+    padding: 6px 9px;
+    border: 1px solid #c4b5fd;
+    border-radius: 10px;
+    color: #5b21b6;
+    background: #f5f3ff;
+    font-size: 0.75rem;
+}
+
+.chat-composer {
+    display: grid;
+    gap: 8px;
+}
+
+.chat-text {
+    width: 100%;
+    min-height: 64px;
+    padding: 10px 11px;
+    resize: vertical;
+    border: 1px solid #cbd5e1;
+    border-radius: 11px;
+    outline: none;
+    color: #172033;
+    background: white;
+}
+
+.chat-text:focus {
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+}
+
+.chat-composer-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+}
+
+.chat-image-picker {
+    padding: 7px 11px;
+    border: 1px solid #c4b5fd;
+    border-radius: 9px;
+    color: #6d28d9;
+    background: #f5f3ff;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+
+.chat-send-button {
+    min-width: 88px;
+    background: #7c3aed;
+}
+
 .rules-list {
     margin: 21px 0;
     padding-left: 1.25rem;
@@ -723,7 +946,7 @@ button {
 
 @media (max-width: 768px) {
     :root {
-        --board-size: min(94vw, calc(100dvh - 265px), 520px);
+        --board-size: min(94vw, calc(100dvh - 283px), 520px);
     }
 
     .app-shell {
@@ -758,7 +981,7 @@ button {
     }
 
     .game-stage {
-        grid-template-rows: auto minmax(0, 1fr) auto 58px;
+        grid-template-rows: auto minmax(0, 1fr) auto 76px;
         gap: 5px;
     }
 
@@ -808,15 +1031,19 @@ button {
         font-size: 0.72rem;
     }
 
-    .jump-log {
+    .activity-card {
         width: 100%;
-        height: 58px;
+        height: 76px;
         padding: 3px 9px;
         border-radius: 11px;
         font-size: 0.62rem;
     }
 
-    .jump-log div {
+    .activity-list {
+        height: 49px;
+    }
+
+    .activity-list div {
         line-height: 16px;
     }
 
@@ -829,6 +1056,11 @@ button {
         max-height: 88dvh;
         padding: 19px;
         border-radius: 17px;
+    }
+
+    .chat-modal {
+        height: min(88dvh, 680px);
+        padding: 16px;
     }
 
     .rules-list {
@@ -850,7 +1082,7 @@ button {
 
 @media (max-height: 640px) and (min-width: 769px) {
     :root {
-        --board-size: min(58vw, calc(100dvh - 220px), 520px);
+        --board-size: min(58vw, calc(100dvh - 236px), 520px);
     }
 
     .app-shell {
@@ -859,7 +1091,7 @@ button {
     }
 
     .game-stage {
-        grid-template-rows: 50px minmax(0, 1fr) 31px 52px;
+        grid-template-rows: 50px minmax(0, 1fr) 31px 68px;
         gap: 4px;
     }
 
@@ -868,8 +1100,12 @@ button {
         padding-block: 5px;
     }
 
-    .jump-log {
-        height: 52px;
+    .activity-card {
+        height: 68px;
         padding-block: 2px;
+    }
+
+    .activity-list {
+        height: 45px;
     }
 }

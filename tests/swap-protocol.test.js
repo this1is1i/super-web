@@ -88,7 +88,10 @@ test("pre-game swap requires confirmation, swaps symbols, and enforces cooldown"
     first = await connect(`ws://127.0.0.1:${port}`);
     second = await connect(`ws://127.0.0.1:${port}`);
 
-    first.send({ type: "create_room" });
+    first.send({
+      type: "create_room",
+      rule_config: { boardVariant: "normal", swapEvery: 1 },
+    });
     const created = await first.next("room_created");
     second.send({ type: "join_room", room_id: created.room_id });
     await Promise.all([first.next("game_start"), second.next("game_start")]);
@@ -113,9 +116,11 @@ test("pre-game swap requires confirmation, swaps symbols, and enforces cooldown"
     second.send({
       type: "make_move",
       room_id: created.room_id,
-      move: { board_index: 4, cell_index: 0, player: "X" },
+      client_move_id: "swap-cooldown-move",
+      state_version: 0,
+      move: { position: 4, cell_index: 0 },
     });
-    await Promise.all([first.next("move_made"), second.next("move_made")]);
+    await Promise.all([first.next("turn_applied"), second.next("turn_applied")]);
 
     first.send({ type: "request_swap", room_id: created.room_id });
     const afterMove = await first.next("swap_unavailable");
