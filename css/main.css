@@ -379,6 +379,21 @@ button {
     outline-offset: -4px;
 }
 
+.cell.expiring {
+    position: relative;
+    outline: 2px dashed rgba(255, 255, 255, 0.95);
+    outline-offset: -4px;
+}
+
+.cell.expiring::after {
+    content: "旧";
+    position: absolute;
+    right: 3px;
+    bottom: 1px;
+    font-size: clamp(8px, 1.1vmin, 11px);
+    line-height: 1.2;
+}
+
 .board-label,
 .source-indicator {
     position: absolute;
@@ -631,6 +646,21 @@ button {
 .mode-field-label,
 .mode-frequency {
     margin-top: 10px;
+}
+
+.piece-limit-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.piece-limit-toggle input {
+    width: 18px;
+    height: 18px;
+    accent-color: #7c3aed;
 }
 
 .mode-apply-button {

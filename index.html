@@ -1,20 +1,23 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="orbital">
 	<head>
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<title>超级井字棋 - 网络对战版</title>
 		<link rel="stylesheet" href="/css/main.css">
+		<link rel="stylesheet" href="/css/orbital.css" id="themeStylesheet">
 	</head>
 	<body>
+		<div class="space-scene" aria-hidden="true"><div class="star-field"></div><div class="orbital-ring"></div></div>
 		<div class="app-shell" id="appShell">
 			<header class="topbar">
+				<div class="brand"><span class="brand-emblem" aria-hidden="true"></span><div><h1 class="game-title">超级井字棋</h1><div class="brand-caption">ORBITAL <span>／ 星际棋舱</span></div></div></div>
 				<div class="topbar-actions">
-					<button class="icon-button" id="rulesButton" onclick="openRulesModal()" aria-label="查看游戏规则">📋 规则</button>
-					<button class="icon-button" id="settingsButton" onclick="openSettings()" aria-label="打开连接与房间设置">☰ 设置</button>
-					<button class="icon-button chat-button" id="chatButton" onclick="openChatModal()" aria-label="打开对话" disabled>💬 对话</button>
+					<button class="icon-button" id="rulesButton" onclick="openRulesModal()" aria-label="查看游戏规则"><span class="ui-icon icon-book" aria-hidden="true"></span>规则</button>
+					<button class="icon-button" id="settingsButton" onclick="openSettings()" aria-label="打开连接与房间设置"><span class="ui-icon icon-settings" aria-hidden="true"></span>设置</button>
+					<button class="icon-button chat-button" id="chatButton" onclick="openChatModal()" aria-label="打开对话" disabled>对话</button>
+					<button class="icon-button motion-button" id="motionButton" onclick="toggleMotion()" aria-pressed="true" aria-label="切换视觉动效">动效：开</button>
 				</div>
-				<h1 class="game-title">超级井字棋</h1>
 				<div class="connection-status" id="connectionStatus">
 					<span class="status-disconnected">● 未连接</span>
 				</div>
@@ -52,10 +55,23 @@
 				</section>
 
 				<div class="game-actions">
-					<button class="action-button reset-button" onclick="resetGame()">↻ 重新开始</button>
+					<button class="action-button reset-button" onclick="resetGame()"><span class="ui-icon icon-reset" aria-hidden="true"></span>重新开始</button>
 					<button class="action-button swap-button" id="swapButton" onclick="requestSwap()" style="display: none;">⇄ 交换先后手</button>
 				</div>
 
+				<aside class="flight-panel" aria-label="对局面板">
+					<section class="session-card">
+						<div class="panel-eyebrow"><span class="status-dot"></span> ORBITAL / 01</div>
+						<h2>落子之间，<br><span>万象流转。</span></h2>
+						<p class="session-intro">九个棋盘，一场全局博弈。</p>
+						<div class="planet-window" aria-hidden="true"><div class="planet-orbit"></div><img src="/assets/art/planet.png" alt="" width="180" height="180"><span>THE NEXT MOVE IS YOURS</span></div>
+						<div class="session-details">
+							<div><span>规则模式</span><strong id="ruleSummary">普通模式</strong></div>
+							<div><span>对手</span><strong id="opponentSummary">在线对战</strong></div>
+							<div><span>棋子上限</span><strong id="limitSummary">不限制</strong></div>
+						</div>
+						<button class="configure-button" onclick="openSettings()">配置对局 <span class="ui-icon icon-arrow" aria-hidden="true"></span></button>
+					</section>
 				<section class="activity-card" id="activityCard" aria-label="对局动态">
 					<div class="activity-card-header">
 						<strong id="activityTitle">最近步骤</strong>
@@ -68,7 +84,9 @@
 						<div>暂无消息</div>
 					</div>
 				</section>
+				</aside>
 			</main>
+			<footer class="deck-footer"><span><i></i> 星际棋舱</span><span>让每一步，都有回响。</span><a href="/assets/credits.html" target="_blank" rel="noopener">素材鸣谢 ↗</a></footer>
 		</div>
 
 		<button class="page-backdrop" id="settingsBackdrop" onclick="closeSettings()" aria-label="关闭设置"></button>
@@ -98,6 +116,15 @@
 				<div id="swapFrequencyField" class="mode-frequency" hidden>
 					<label class="field-label" for="swapEvery">每几手交换一次</label>
 					<input type="number" id="swapEvery" class="connection-input" min="1" max="20" value="1" inputmode="numeric">
+				</div>
+				<label class="piece-limit-toggle" for="pieceLimitEnabled">
+					<input type="checkbox" id="pieceLimitEnabled" onchange="updateModeControls()">
+					限制每个小棋盘的棋子数量
+				</label>
+				<div id="pieceLimitField" class="mode-frequency" hidden>
+					<label class="field-label" for="pieceLimit">每盘最多保留（双方合计）</label>
+					<input type="number" id="pieceLimit" class="connection-input" min="3" max="8" step="1" value="7" inputmode="numeric" disabled aria-describedby="pieceLimitHint">
+					<p class="drawer-hint" id="pieceLimitHint">超额后移除最早的棋子，再判三连。虚线“旧”标记表示本盘下次落子后会消失的棋子；获胜棋盘封盘。完整局面第三次重复时结束并计分。</p>
 				</div>
 				<button class="connection-button mode-apply-button full-button" id="applyModeButton" onclick="applyGameConfig()">应用并开始新局</button>
 				<p class="drawer-hint">默认普通规则与在线对战；修改配置会开始一局新游戏。</p>
@@ -168,6 +195,8 @@
 					<li>落子所在的小格决定对手下一步要进入的小棋盘。</li>
 					<li>循环模式按固定顺序交换两个小棋盘的内容；混沌模式则随机交换两个小棋盘的内容。</li>
 					<li>特殊模式仍按绝对位置决定下一步跳转，可在设置中选择每 N 手交换一次。</li>
+					<li>可选棋子上限：每个小棋盘双方合计最多保留 3–8 枚。先在空格落子，超额后移除本盘最早的一枚，再判三连；获胜棋盘封盘，不再移除棋子。棋子顺序和跳转来源随棋盘一起交换。</li>
+					<li>开启上限后允许长局；完整局面第三次出现时，未获胜棋盘按平局封盘，保留棋形并按现有得分判胜负，总分相同才算整局平局。棋子顺序、当前方、跳转来源和交换进度都参与重复判断。</li>
 					<li>橙色光晕始终指示当前正在操作的棋盘；绿色光晕预示赢下当前小局后的目标棋盘。</li>
 					<li>赢得一个小棋盘得 1 分；普通大棋盘三连额外加 2 分。</li>
 					<li>三个小棋盘具有共同获胜线型但未形成对应长线时加 3 分。</li>
@@ -189,6 +218,7 @@
 
 		<script src="/js/game-rules.js"></script>
 		<script src="/js/ai-player.js"></script>
+		<script src="/js/board-effects.js"></script>
 		<script src="/js/main.js"></script>
 	</body>
 </html>

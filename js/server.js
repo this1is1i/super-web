@@ -148,11 +148,17 @@ function generateRoomId() {
 
 function validateRuleConfig(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const keys = Object.keys(value).sort();
-  if (keys.length !== 2 || keys[0] !== "boardVariant" || keys[1] !== "swapEvery") return null;
-  if (!["normal", "cycle", "chaos"].includes(value.boardVariant)) return null;
-  if (!Number.isInteger(value.swapEvery) || value.swapEvery < 1 || value.swapEvery > 20) return null;
-  return { boardVariant: value.boardVariant, swapEvery: value.swapEvery };
+  const keys = Object.keys(value);
+  if (!keys.includes("boardVariant") || !keys.includes("swapEvery") ||
+    keys.some((key) => !["boardVariant", "swapEvery", "pieceLimit"].includes(key))) return null;
+  try {
+    const config = Rules.getValidatedConfig(value);
+    // Preserve the legacy wire shape for clients which do not send the optional setting.
+    if (!keys.includes("pieceLimit")) delete config.pieceLimit;
+    return config;
+  } catch (_) {
+    return null;
+  }
 }
 
 function createPlayer(ws, symbol, roomId) {
@@ -381,7 +387,7 @@ wss.on("connection", (ws) => {
             sendJson(ws, {
               type: "error",
               code: "INVALID_RULE_CONFIG",
-              message: "rule_config 必须包含有效的 boardVariant 与 swapEvery",
+              message: "规则配置无效：棋子上限须为 3–8 的整数，关闭时为 null",
             });
             return;
           }
@@ -723,6 +729,8 @@ wss.on("connection", (ws) => {
             result: {
               exchange: turnResult.exchange,
               gameOver: turnResult.gameOver,
+              removedPiece: turnResult.removedPiece,
+              endReason: turnResult.endReason,
             },
           };
           currentPlayer.moveDedupe.set(data.client_move_id, applied);

@@ -4,6 +4,8 @@
 
   var Rules = window.SuperTicTacToeRules;
   var AI = window.SuperTicTacToeAI && window.SuperTicTacToeAI.createAI(Rules);
+  var boardEffects = window.SuperTicTacToeEffects && window.SuperTicTacToeEffects.create(window, document);
+  var motionEnabled = !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   var BOARD_COUNT = Rules.BOARD_COUNT;
   var CELL_COUNT = Rules.CELL_COUNT;
   var RECONNECT_GRACE_MS = 5 * 60 * 1000;
@@ -44,6 +46,7 @@
     boardVariant: "normal",
     opponentMode: "pvp",
     swapEvery: 1,
+    pieceLimit: null,
   };
   var gameState = createGameState();
 
@@ -51,11 +54,20 @@
     return document.getElementById(id);
   }
 
+  function syncMotionControl() {
+    if (document.documentElement) document.documentElement.setAttribute("data-motion", motionEnabled ? "on" : "off");
+    if (boardEffects) boardEffects.setEnabled(motionEnabled);
+    $("motionButton").textContent = "动效：" + (motionEnabled ? "开" : "关");
+    $("motionButton").setAttribute("aria-pressed", String(motionEnabled));
+  }
+
+  window.toggleMotion = function () {
+    motionEnabled = !motionEnabled;
+    syncMotionControl();
+  };
+
   function createGameState() {
-    return Rules.createInitialGameState({
-      boardVariant: gameConfig.boardVariant,
-      swapEvery: gameConfig.swapEvery,
-    });
+    return Rules.createInitialGameState(currentRuleConfig());
   }
 
   function rehydrateGameState(state) {
@@ -345,6 +357,7 @@
     if (!config) return;
     gameConfig.boardVariant = config.boardVariant || config.board_variant || "normal";
     gameConfig.swapEvery = Number(config.swapEvery || config.swap_every || 1);
+    gameConfig.pieceLimit = config.pieceLimit === undefined ? null : config.pieceLimit;
     gameConfig.opponentMode = "pvp";
     syncConfigControls();
   }
@@ -408,6 +421,7 @@
         break;
 
       case "session_resumed":
+        if (boardEffects) boardEffects.reset();
         clearConnectionTimer();
         cancelReconnect();
         currentRoom = message.room_id;
@@ -602,10 +616,7 @@
     showWaiting("正在创建房间…");
     sendJson({
       type: "create_room",
-      rule_config: {
-        boardVariant: gameConfig.boardVariant,
-        swapEvery: gameConfig.swapEvery,
-      },
+      rule_config: currentRuleConfig(),
     });
   };
 
@@ -643,6 +654,7 @@
     return {
       boardVariant: gameConfig.boardVariant,
       swapEvery: gameConfig.swapEvery,
+      pieceLimit: gameConfig.pieceLimit,
     };
   }
 
@@ -651,10 +663,15 @@
     if (!Number.isFinite(swapEvery) || swapEvery < 1 || swapEvery > 20) {
       throw new Error("交换频次必须是 1–20 的整数");
     }
+    var pieceLimit = $("pieceLimitEnabled").checked ? Number($("pieceLimit").value) : null;
+    if (pieceLimit !== null && (!Number.isInteger(pieceLimit) || pieceLimit < 3 || pieceLimit > 8)) {
+      throw new Error("每个棋盘最多保留的棋子数必须是 3–8 的整数");
+    }
     return {
       boardVariant: $("boardVariant").value,
       opponentMode: $("opponentMode").value,
       swapEvery: swapEvery,
+      pieceLimit: pieceLimit,
     };
   }
 
@@ -662,6 +679,8 @@
     $("boardVariant").value = gameConfig.boardVariant;
     $("opponentMode").value = gameConfig.opponentMode;
     $("swapEvery").value = gameConfig.swapEvery;
+    $("pieceLimitEnabled").checked = gameConfig.pieceLimit !== null;
+    $("pieceLimit").value = gameConfig.pieceLimit === null ? 7 : gameConfig.pieceLimit;
     updateModeControls();
   }
 
@@ -669,6 +688,8 @@
     var opponentMode = $("opponentMode").value;
     var boardVariant = $("boardVariant").value;
     $("swapFrequencyField").hidden = boardVariant === "normal";
+    $("pieceLimitField").hidden = !$("pieceLimitEnabled").checked;
+    $("pieceLimit").disabled = !$("pieceLimitEnabled").checked;
     $("connectionPanel").style.display = opponentMode === "pvp" ? "block" : "none";
     $("roomSettingsSection").style.display = opponentMode === "pvp" ? "block" : "none";
     $("roomControls").style.display =
@@ -707,7 +728,8 @@
     closeSettings();
     updateJumpLog(
       "已切换为" + modeLabel(nextConfig.boardVariant) + " · " +
-      opponentLabel(nextConfig.opponentMode)
+      opponentLabel(nextConfig.opponentMode) +
+      (nextConfig.pieceLimit === null ? "" : " · 每盘最多 " + nextConfig.pieceLimit + " 枚")
     );
   };
 
@@ -805,7 +827,7 @@
     var controller = aiAbortController;
     var rootExchange = exchangePairForLocalTurn(gameState);
     updateJumpLog("AI 正在思考…");
-    AI.chooseTurn(gameState, {
+    Promise.all([AI.chooseTurn(gameState, {
       difficulty: gameConfig.opponentMode === "ai_hard" ? "hard" : "normal",
       symbol: "O",
       exchangePair: rootExchange,
@@ -813,7 +835,8 @@
       maxDepth: gameConfig.opponentMode === "ai_hard" ? 4 : 1,
       timeLimitMs: gameConfig.opponentMode === "ai_hard" ? 1200 : 350,
       signal: controller.signal,
-    }).then(function (turn) {
+    }), boardEffects ? boardEffects.settled() : Promise.resolve()]).then(function (results) {
+      var turn = results[0];
       if (controller.signal.aborted || gameState.currentPlayer !== "O") return;
       Rules.applyTurn(gameState, turn);
       aiAbortController = null;
@@ -844,7 +867,10 @@
         "玩家 " + gameState.overallWinner + " 获胜！最终得分 X: " +
         totals.X + " - O: " + totals.O;
     }
-    updateJumpLog("游戏结束");
+    if (gameState.endReason === "threefold_repetition") {
+      $("winnerInfo").textContent = "局面三次重复，按比分结算。" + $("winnerInfo").textContent;
+    }
+    updateJumpLog(gameState.endReason === "threefold_repetition" ? "局面三次重复，游戏结束并计分" : "游戏结束");
   }
 
   function hideGameResult() {
@@ -962,7 +988,7 @@
 
   function updateUnreadBadge() {
     var button = $("chatButton");
-    button.textContent = "💬 对话" + (unreadMessages ? " (" + unreadMessages + ")" : "");
+    button.textContent = "对话" + (unreadMessages ? " (" + unreadMessages + ")" : "");
   }
 
   function updateChatAvailability() {
@@ -1130,6 +1156,10 @@
   }
 
   function updateUI() {
+    $("ruleSummary").textContent = modeLabel(gameConfig.boardVariant) +
+      (gameConfig.boardVariant === "normal" ? "" : " · " + gameConfig.swapEvery + " 手");
+    $("opponentSummary").textContent = opponentLabel(gameConfig.opponentMode);
+    $("limitSummary").textContent = gameConfig.pieceLimit === null ? "不限制" : "每盘 " + gameConfig.pieceLimit + " 枚";
     $("currentPlayer").innerHTML =
       '<span class="' + (gameState.currentPlayer === "X" ? "player-x" : "player-o") + '">' +
       gameState.currentPlayer + "</span>";
@@ -1157,10 +1187,16 @@
       if (isActive) miniBoard.classList.add("active");
       if (isActive && isMyTurn) miniBoard.classList.add("playable");
       if (tile.winner) miniBoard.classList.add("won-" + tile.winner.toLowerCase());
+      var tileContent = document.createElement("div");
+      tileContent.className = "tile-content";
+      tileContent.dataset.tileId = tile.id;
 
       var label = document.createElement("div");
       label.className = "board-label";
       label.textContent = position + 1;
+      if (gameState.pieceLimit !== null) {
+        label.title = "棋子 " + tile.moveOrder.length + "/" + gameState.pieceLimit;
+      }
       miniBoard.appendChild(label);
 
       if (tile.fromTileId !== null && !tile.winner) {
@@ -1186,13 +1222,33 @@
           if (isPending) cell.classList.add("pending");
           cell.textContent = displayed;
         }
-        if (isActive && isMyTurn && !value && !tile.winner && !pendingOnlineMove) {
-          cell.addEventListener("click", handleCellClick);
+        if (tile.winningPatterns.some(function (patternIndex) {
+          return Rules.WINNING_PATTERNS[patternIndex].indexOf(cellIndex) !== -1;
+        })) cell.classList.add("winning-cell");
+        if (value && gameState.pieceLimit !== null && !tile.winner && !gameState.isGameOver &&
+          tile.moveOrder.length === gameState.pieceLimit && tile.moveOrder[0] === cellIndex) {
+          cell.classList.add("expiring");
+          cell.title = "本棋盘最早的棋子，下次在此棋盘落子后消失";
+          cell.setAttribute("aria-label", value + "，本棋盘下次落子后消失");
         }
-        miniBoard.appendChild(cell);
+        if (isActive && isMyTurn && !value && !tile.winner && !pendingOnlineMove) {
+          cell.setAttribute("role", "button");
+          cell.setAttribute("tabindex", "0");
+          cell.setAttribute("aria-label", "棋盘 " + (position + 1) + "，位置 " + (cellIndex + 1) + " 落子");
+          cell.addEventListener("click", handleCellClick);
+          cell.addEventListener("keydown", function (event) {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              handleCellClick(event);
+            }
+          });
+        }
+        tileContent.appendChild(cell);
       }
+      miniBoard.appendChild(tileContent);
       overallBoard.appendChild(miniBoard);
     }
+    if (boardEffects) boardEffects.render(overallBoard, gameState);
   }
 
   function updateSwapButton() {
@@ -1256,6 +1312,7 @@
   };
 
   function initGame() {
+    if (boardEffects) boardEffects.reset();
     clearJumpLog();
     hideGameResult();
     if (gameConfig.opponentMode !== "pvp") {
@@ -1272,6 +1329,7 @@
   }
 
   window.onload = function () {
+    syncMotionControl();
     loadResumeCredentials();
     updateConnectionStatus("disconnected", "未连接");
     window.setInterval(updateSwapButton, 1000);

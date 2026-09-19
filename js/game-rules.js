@@ -70,13 +70,17 @@
     config = config || {};
     var boardVariant = config.boardVariant === undefined ? "normal" : config.boardVariant;
     var swapEvery = config.swapEvery === undefined ? 1 : config.swapEvery;
+    var pieceLimit = config.pieceLimit === undefined ? null : config.pieceLimit;
     if (["normal", "cycle", "chaos"].indexOf(boardVariant) === -1) {
       throw new Error("boardVariant must be normal, cycle, or chaos");
     }
     if (!Number.isInteger(swapEvery) || swapEvery < 1 || swapEvery > 20) {
       throw new Error("swapEvery must be an integer from 1 through 20");
     }
-    return { boardVariant: boardVariant, swapEvery: swapEvery };
+    if (pieceLimit !== null && (!Number.isInteger(pieceLimit) || pieceLimit < 3 || pieceLimit > 8)) {
+      throw new Error("pieceLimit must be null or an integer from 3 through 8");
+    }
+    return { boardVariant: boardVariant, swapEvery: swapEvery, pieceLimit: pieceLimit };
   }
 
   function createInitialGameState(options) {
@@ -85,6 +89,7 @@
       return {
         id: index,
         cells: Array(CELL_COUNT).fill(null),
+        moveOrder: [],
         winner: null,
         winningPatterns: [],
         isActive: index === CENTER_BOARD,
@@ -104,6 +109,9 @@
       currentBoard: CENTER_BOARD,
       boardVariant: config.boardVariant,
       swapEvery: config.swapEvery,
+      pieceLimit: config.pieceLimit,
+      repetitionCounts: {},
+      endReason: null,
       moveCount: 0,
       cycleCursor: 0,
       currentPlayer: "X",
@@ -116,7 +124,9 @@
       isGameOver: false,
       overallWinner: null,
     };
-    return rehydrateGameState(gameState);
+    rehydrateGameState(gameState);
+    if (gameState.pieceLimit !== null) gameState.repetitionCounts[getRepetitionKey(gameState)] = 1;
+    return gameState;
   }
 
   function getWinningPatternIndexes(gameState, boardIndex, cellsOverride) {
@@ -265,9 +275,50 @@
     if (!allBoardsEnded) return false;
 
     gameState.isGameOver = true;
+    if (!gameState.endReason) gameState.endReason = "all_boards_ended";
     var totals = getTotalScores(gameState);
     gameState.overallWinner = totals.X === totals.O ? "draw" : (totals.X > totals.O ? "X" : "O");
     return true;
+  }
+
+  // Exact state identity, not a hash: no collisions and no absolute turn counter.
+  // Order is per tile, so both expiration and routing survive board exchanges.
+  function getRepetitionKey(gameState) {
+    var special = gameState.boardVariant !== "normal";
+    return JSON.stringify([
+      gameState.boardVariant, gameState.pieceLimit,
+      special ? gameState.swapEvery : null,
+      special ? gameState.moveCount % gameState.swapEvery : null,
+      gameState.boardVariant === "cycle" ? gameState.cycleCursor : null,
+      gameState.currentPlayer, gameState.currentPosition, gameState.positionToTile,
+      gameState.scores.X, gameState.scores.O,
+      gameState.tiles.map(function (tile) {
+        return [
+          tile.cells.map(function (cell) { return cell || "-"; }).join(""),
+          tile.moveOrder.join(""), tile.winner, tile.winningPatterns,
+          tile.fromTileId,
+        ];
+      }),
+    ]);
+  }
+
+  function recordRepetition(gameState, boardWon) {
+    if (gameState.pieceLimit === null || gameState.isGameOver) return;
+    // Sealed boards never reopen; no position from before a win can recur.
+    if (boardWon) gameState.repetitionCounts = {};
+    var key = getRepetitionKey(gameState);
+    var count = (gameState.repetitionCounts[key] || 0) + 1;
+    gameState.repetitionCounts[key] = count;
+    if (count < 3) return;
+    gameState.tiles.forEach(function (tile) {
+      if (tile.winner === null) {
+        tile.winner = "draw";
+        tile.winningPatterns = [];
+      }
+    });
+    gameState.endReason = "threefold_repetition";
+    calculateBonuses(gameState);
+    checkGameEnd(gameState);
   }
 
   function getTileAtPosition(gameState, position) {
@@ -319,6 +370,20 @@
       })) {
         throw new Error("each cell value must be null, X, or O");
       }
+      if (config.pieceLimit !== null) {
+        if (
+          !Array.isArray(tile.moveOrder) ||
+          tile.moveOrder.length !== tile.cells.filter(function (cell) { return cell !== null; }).length ||
+          tile.moveOrder.length > config.pieceLimit ||
+          new Set(tile.moveOrder).size !== tile.moveOrder.length ||
+          !tile.moveOrder.every(function (cellIndex) {
+            return Number.isInteger(cellIndex) && cellIndex >= 0 && cellIndex < CELL_COUNT &&
+              tile.cells[cellIndex] !== null;
+          })
+        ) {
+          throw new Error("tile moveOrder must list all occupied cells once in chronological order within pieceLimit");
+        }
+      }
       if ([null, "X", "O", "draw"].indexOf(tile.winner) === -1) {
         throw new Error("tile winner must be null, X, O, or draw");
       }
@@ -359,6 +424,20 @@
     validateRuntimeFields(gameState);
     gameState.boardVariant = config.boardVariant;
     gameState.swapEvery = config.swapEvery;
+    gameState.pieceLimit = config.pieceLimit;
+    if (config.pieceLimit !== null) {
+      var counts = gameState.repetitionCounts;
+      if (!counts || typeof counts !== "object" || Array.isArray(counts) ||
+        !Object.keys(counts).every(function (key) {
+          return Number.isInteger(counts[key]) && counts[key] >= 1 && counts[key] <= 3;
+        })) {
+        throw new Error("repetitionCounts must contain occurrence counts from 1 through 3");
+      }
+    }
+    if (gameState.endReason === undefined) gameState.endReason = null;
+    if ([null, "all_boards_ended", "threefold_repetition"].indexOf(gameState.endReason) === -1) {
+      throw new Error("invalid endReason");
+    }
     normalizeFullTilesAsDraw(gameState);
     syncPositionView(gameState);
     calculateBonuses(gameState);
@@ -510,6 +589,15 @@
     var activeTile = getTileAtPosition(gameState, boardIndex);
     var activeTileId = activeTile.id;
     activeTile.cells[cellIndex] = symbol;
+    var removedPiece = null;
+    if (gameState.pieceLimit !== null) {
+      activeTile.moveOrder.push(cellIndex);
+      if (activeTile.moveOrder.length > gameState.pieceLimit) {
+        var removedIndex = activeTile.moveOrder.shift();
+        removedPiece = { tileId: activeTileId, cellIndex: removedIndex, symbol: activeTile.cells[removedIndex] };
+        activeTile.cells[removedIndex] = null;
+      }
+    }
 
     var winningPatterns = getWinningPatternIndexes(gameState, boardIndex);
     if (winningPatterns.length > 0) {
@@ -542,11 +630,14 @@
     syncPositionView(gameState);
     gameState.currentPlayer = symbol === "X" ? "O" : "X";
     calculateBonuses(gameState);
-    var gameOver = checkGameEnd(gameState);
+    checkGameEnd(gameState);
+    recordRepetition(gameState, winningPatterns.length > 0);
     return {
-      gameOver: gameOver,
+      gameOver: gameState.isGameOver,
       winningPatterns: winningPatterns,
       exchange: exchange,
+      removedPiece: removedPiece,
+      endReason: gameState.endReason,
     };
   }
 
@@ -570,6 +661,8 @@
     CENTER_BOARD: CENTER_BOARD,
     WINNING_PATTERNS: WINNING_PATTERNS,
     FULL_BOARD_LINES: FULL_BOARD_LINES,
+    getValidatedConfig: getValidatedConfig,
+    getRepetitionKey: getRepetitionKey,
     createInitialGameState: createInitialGameState,
     getWinningPatternIndexes: getWinningPatternIndexes,
     checkMiniBoardWin: checkMiniBoardWin,

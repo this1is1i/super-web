@@ -118,6 +118,68 @@ async function stopServer(child, clients) {
 
 const NORMAL_CONFIG = Object.freeze({ boardVariant: "normal", swapEvery: 1 });
 
+for (const boardVariant of ["normal", "cycle", "chaos"]) {
+  test(`${boardVariant}: piece limits are authoritative and preserved on resume and reset`, async () => {
+    const Rules = require("../js/game-rules");
+    const { child, url } = await startServer();
+    const clients = [];
+    try {
+      const config = { boardVariant, swapEvery: 2, pieceLimit: 3 };
+      const owner = await connect(url);
+      const joiner = await connect(url);
+      clients.push(owner, joiner);
+      owner.send({ type: "create_room", rule_config: config });
+      const created = await owner.next("room_created");
+      joiner.send({ type: "join_room", room_id: created.room_id });
+      const [ownerStart, joinerStart] = await Promise.all([
+        owner.next("game_start"), joiner.next("game_start"),
+      ]);
+      assert.deepEqual(ownerStart.rule_config, config);
+      assert.deepEqual(joinerStart.rule_config, config);
+      const local = Rules.rehydrateGameState(ownerStart.game_state);
+      let removed = false;
+      for (let step = 0; step < 100 && !local.isGameOver; step++) {
+        const moves = Rules.getLegalMoves(local);
+        const move = moves[step % moves.length];
+        const active = local.currentPlayer === "X" ? owner : joiner;
+        active.send({
+          type: "make_move", room_id: created.room_id,
+          client_move_id: `limited-${step}`, state_version: step,
+          move: { position: move.position, cell_index: move.cellIndex },
+        });
+        const [first, second] = await Promise.all([owner.next("turn_applied"), joiner.next("turn_applied")]);
+        assert.deepEqual(first, second);
+        const result = Rules.applyTurn(local, first.turn);
+        assert.deepEqual(first.result.removedPiece, result.removedPiece);
+        assert.equal(first.result.endReason, result.endReason);
+        assert.ok(local.tiles.every((tile) => tile.cells.filter(Boolean).length <= 3));
+        removed ||= Boolean(result.removedPiece);
+        if (removed && step >= 35) break;
+      }
+      assert.equal(removed, true);
+      joiner.socket.terminate();
+      await owner.next("player_temporarily_disconnected");
+      const replacement = await connect(url);
+      clients.push(replacement);
+      replacement.send({
+        type: "resume_session", session_id: joinerStart.session_id, resume_token: joinerStart.resume_token,
+      });
+      const resumed = await replacement.next("session_resumed");
+      assert.deepEqual(resumed.rule_config, config);
+      assert.deepEqual(Rules.rehydrateGameState(resumed.game_state), local);
+      owner.send({ type: "reset_game", room_id: created.room_id });
+      const reset = await owner.next("game_reset");
+      assert.deepEqual(reset.rule_config, config);
+      assert.equal(reset.game_state.pieceLimit, 3);
+      assert.equal(reset.game_state.endReason, null);
+      assert.ok(reset.game_state.tiles.every((tile) => tile.moveOrder.length === 0));
+      assert.equal(Object.keys(reset.game_state.repetitionCounts).length, 1);
+    } finally {
+      await stopServer(child, clients);
+    }
+  });
+}
+
 test("create_room strictly validates rule_config without binding failed attempts", async () => {
   const { child, url } = await startServer();
   const clients = [];
@@ -133,6 +195,9 @@ test("create_room strictly validates rule_config without binding failed attempts
       { boardVariant: "chaos", swapEvery: 1.5 },
       { boardVariant: "normal", swapEvery: 21 },
       { boardVariant: "normal", swapEvery: 1, extra: true },
+      { boardVariant: "normal", swapEvery: 1, pieceLimit: 2 },
+      { boardVariant: "normal", swapEvery: 1, pieceLimit: 9 },
+      { boardVariant: "normal", swapEvery: 1, pieceLimit: "7" },
     ];
     for (const ruleConfig of invalidConfigs) {
       const request = { type: "create_room" };
@@ -231,7 +296,7 @@ test("make_move rejects unauthorized stale malformed and illegal requests atomic
       symbol: "X",
       exchangePair: null,
     });
-    assert.deepEqual(firstApplied.result, { exchange: null, gameOver: false });
+    assert.deepEqual(firstApplied.result, { exchange: null, gameOver: false, removedPiece: null, endReason: null });
     await Promise.all([room.first.expectNo("move_made"), room.second.expectNo("move_made")]);
   } finally {
     await stopServer(child, clients);
