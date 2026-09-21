@@ -1,0 +1,44 @@
+[
+  {
+    "file": "tail.png",
+    "tool": "ImageGen",
+    "reference": "../idle.png",
+    "prompt": "Edit this exact character illustration into ONE isolated animation layer. Preserve original full canvas dimensions 1161 by 1355 and exact registration/position/scale of the retained part on that canvas. DO NOT center the retained part or crop around it. Preserve all transparent empty margins. Genuine transparent alpha everywhere except the requested part. Match original fine anime linework, white/ice-blue/navy colors and shading. No checkerboard, labels, guides, frame, or background. Complete areas that were hidden behind other parts as specified. This is a reusable layer for a PSD that will be composited at coordinate (0,0) with other layers.\nKeep ONLY the curved white dragon tail with ice blue fin ridges on the viewer RIGHT. Remove every other part including body, head, all clothing and wings. Complete the hidden root of the tail behind the body's right hip, smoothly extending the white scaled tail inward to around canvas x640 y875. Retain its exact original visible silhouette, arc, scales, fins and position. Do not add legs or clothing. Large remaining canvas fully transparent."
+  },
+  {
+    "file": "wing-left.png",
+    "tool": "ImageGen",
+    "reference": "../idle.png",
+    "prompt": "Edit this exact character illustration into ONE isolated animation layer. Preserve original full canvas dimensions 1161 by 1355 and exact registration/position/scale of the retained part on that canvas. DO NOT center the retained part or crop around it. Preserve all transparent empty margins. Genuine transparent alpha everywhere except the requested part. Match original fine anime linework, white/ice-blue/navy colors and shading. No checkerboard, labels, guides, frame, or background. Complete areas that were hidden behind other parts as specified. This is a reusable layer for a PSD that will be composited at coordinate (0,0) with other layers.\nKeep ONLY the single white dragon wing on the VIEWER LEFT, originally around x190..353 y548..783. Delete all other character parts, even any white hair crossing it. Reconstruct the complete small wing membrane behind the removed hair, extending its hidden shoulder attachment inward to x400 y610. Preserve the visible wing's original size, location and ivory-blue shading. ONE isolated left wing only, not a pair."
+  },
+  {
+    "file": "wing-right.png",
+    "tool": "ImageGen",
+    "reference": "../idle.png",
+    "prompt": "Edit this exact character illustration into ONE isolated animation layer. Preserve original full canvas dimensions 1161 by 1355 and exact registration/position/scale of the retained part on that canvas. DO NOT center the retained part or crop around it. Preserve all transparent empty margins. Genuine transparent alpha everywhere except the requested part. Match original fine anime linework, white/ice-blue/navy colors and shading. No checkerboard, labels, guides, frame, or background. Complete areas that were hidden behind other parts as specified. This is a reusable layer for a PSD that will be composited at coordinate (0,0) with other layers.\nKeep ONLY the single white dragon wing on the VIEWER RIGHT, originally around x785..942 y550..800. Delete all other character parts, even any white hair crossing it. Reconstruct complete small wing membrane behind the removed hair, extending its hidden shoulder attachment inward to x745 y610. Preserve visible wing's original size, location and ivory-blue shading. ONE isolated right wing only, not a pair."
+  },
+  {
+    "file": "body.png",
+    "tool": "ImageGen",
+    "reference": "../idle.png",
+    "prompt": "Edit this exact character illustration into ONE isolated animation layer. Preserve original full canvas dimensions 1161 by 1355 and exact registration/position/scale of the retained part on that canvas. DO NOT center the retained part or crop around it. Preserve all transparent empty margins. Genuine transparent alpha everywhere except the requested part. Match original fine anime linework, white/ice-blue/navy colors and shading. No checkerboard, labels, guides, frame, or background. Complete areas that were hidden behind other parts as specified. This is a reusable layer for a PSD that will be composited at coordinate (0,0) with other layers.\nKeep ONLY the torso in its starship uniform, both full arms/hands, legs and boots, and a short neck extending upward behind the head. REMOVE the entire head, face, all white hair, all horns, both ears, both wings, and the entire dragon tail. Retain the costume capelets and all original clothing. Restore seamless navy/white uniform beneath removed hair and wings. The neck should extend a little above the original collar to overlap under the head. Do not redesign the outfit. Body stays at its original lower-canvas position, with a large transparent region where the head was."
+  },
+  {
+    "file": "hair-left.png",
+    "tool": "ImageGen",
+    "reference": "../idle.png",
+    "prompt": "Edit this exact character illustration into ONE isolated animation layer. Preserve original full canvas dimensions 1161 by 1355 and exact registration/position/scale of the retained part on that canvas. DO NOT center the retained part or crop around it. Preserve all transparent empty margins. Genuine transparent alpha everywhere except the requested part. Match original fine anime linework, white/ice-blue/navy colors and shading. No checkerboard, labels, guides, frame, or background. Complete areas that were hidden behind other parts as specified. This is a reusable layer for a PSD that will be composited at coordinate (0,0) with other layers.\nKeep ONLY the long flowing white side hair lock on the VIEWER LEFT, originally attached by the left ear around x330 y400, sweeping down to x290 y675 then tapering near x335 y741. Include the complete lock with a little extra hair at its root to overlap beneath the head. Remove the entire face, short bangs, scalp hair, horns, ears, wings, body, and tail. Preserve this lock's original length, flow, white shading and blue highlights. Only ONE thin flowing lock, original position, empty rest of canvas."
+  },
+  {
+    "file": "hair-right.png",
+    "tool": "ImageGen",
+    "reference": "../idle.png",
+    "prompt": "Edit this exact character illustration into ONE isolated animation layer. Preserve original full canvas dimensions 1161 by 1355 and exact registration/position/scale of the retained part on that canvas. DO NOT center the retained part or crop around it. Preserve all transparent empty margins. Genuine transparent alpha everywhere except the requested part. Match original fine anime linework, white/ice-blue/navy colors and shading. No checkerboard, labels, guides, frame, or background. Complete areas that were hidden behind other parts as specified. This is a reusable layer for a PSD that will be composited at coordinate (0,0) with other layers.\nKeep ONLY the long flowing white side hair lock on the VIEWER RIGHT, originally attached by the right ear around x740 y405, flowing downward beside the face and over the shoulder to x765 y716. Include the complete lock with a little extra hair at its root to overlap beneath the head. Remove entire face, short bangs, scalp hair, horns, ears, wings, body, tail and left hair lock. Preserve this lock's original length, flow, white shading and blue highlights. Only ONE flowing lock, original position, empty rest of canvas."
+  },
+  {
+    "file": "head.png",
+    "tool": "ImageGen",
+    "reference": "../idle.png",
+    "prompt": "Edit this exact character illustration into ONE isolated animation layer. Preserve original full canvas dimensions 1161 by 1355 and exact registration/position/scale of the retained part on that canvas. DO NOT center the retained part or crop around it. Preserve all transparent empty margins. Genuine transparent alpha everywhere except the requested part. Match original fine anime linework, white/ice-blue/navy colors and shading. No checkerboard, labels, guides, frame, or background. Complete areas that were hidden behind other parts as specified. This is a reusable layer for a PSD that will be composited at coordinate (0,0) with other layers.\nKeep ONLY the character's head: face with its original open blue eyes, smile and brows, short white scalp hair and bangs, both horns, both ears, and small top cowlick. REMOVE the body, neck below chin, wings, tail, and BOTH LONG SIDE HAIR LOCKS that trail down past the jaw onto the shoulders. The remaining head ends around y545, with only short wisps around the cheeks. Preserve the exact face identity and all facial features. Head stays at exact original x/y and scale in upper canvas, lower canvas entirely transparent. This is a coarse head group layer for first-pass neck rotation."
+  }
+]

@@ -1,3 +1,5 @@
 node_modules/
 npm-debug.log*
 .DS_Store
+/work/
+/tools/live2d/node_modules/

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>白龙 · 分层素材台</title>
+  <link rel="stylesheet" href="white-dragon-layers.css">
+  <script src="white-dragon-layers.js" defer></script>
+</head>
+<body>
+  <header><a href="white-dragon.html">← 角色试作</a><span>ORBITAL / ART WORKSHOP / 02</span></header>
+  <main>
+    <section class="stage" aria-label="分层拼合预览">
+      <div id="art" class="art"></div>
+      <p class="caption">WHITE DRAGON <span>·</span> LAYER STUDY</p>
+    </section>
+    <aside>
+      <p class="eyebrow">CODEX GIRL / SOURCE ART</p>
+      <h1>白龙的<br><em>每一层。</em></h1>
+      <p class="intro" id="intro">七个部件，从静态原画走向独立运动。</p>
+      <p class="note" id="note">首轮粗分层 · 1248 × 1488 · 透明背景<br>尚未绑定 Cubism；五官与四肢仍需精拆。</p>
+      <p class="versions"><a href="white-dragon-layers.html">V1 粗分层</a><a href="white-dragon-layers.html?v=2">V2 五官精拆</a><a href="white-dragon-layers.html?v=3">V3 躯干候选</a></p>
+      <fieldset><legend>可见图层</legend><div id="layers"></div></fieldset>
+      <div class="controls">
+        <button id="background" type="button" aria-pressed="false">浅色背景</button>
+        <button id="reference" type="button" aria-pressed="false">查看原画</button>
+        <button id="restore" type="button">恢复图层</button>
+      </div>
+      <label class="range" for="spread">展开部件 <output id="spread-value">0%</output></label>
+      <input id="spread" type="range" min="0" max="100" value="0">
+      <p class="hint">展开仅用于检查部件覆盖，不代表绑定后的运动效果。左右以画面方向为准。</p>
+      <a id="download" class="download" href="../assets/characters/white-dragon/layers-v1/white-dragon-layers-v1.psd" download>下载分层 PSD <span>↓</span></a>
+      <a id="guide" class="guide" href="../assets/characters/white-dragon/layers-v1/README.md">导入说明与待精修清单 ↗</a>
+      <p id="status" role="status">正在载入素材…</p>
+    </aside>
+  </main>
+</body>
+</html>

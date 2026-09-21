@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>白龙 · 星际搭档 — 动画试作</title>
+  <link rel="stylesheet" href="white-dragon.css">
+  <script src="white-dragon.js" defer></script>
+</head>
+<body>
+  <header><a href="/">↗ 返回棋舱</a><span>ORBITAL / CHARACTER LAB / 01</span><span class="tag">动画试作</span></header>
+  <main>
+    <section class="stage" aria-label="白色龙娘动画预览">
+      <div class="orbit orbit-one" aria-hidden="true"></div><div class="orbit orbit-two" aria-hidden="true"></div>
+      <div class="floor" aria-hidden="true"></div>
+      <div class="look"><div class="float"><div class="greeting" id="greeting"><div class="breath" id="character">
+        <img class="portrait" src="../assets/characters/white-dragon/idle.png" alt="白发、冰蓝眼睛，穿深蓝星际制服的 Q 版白色龙娘，带白色龙角、双翼和龙尾" draggable="false">
+        <img class="blink" src="../assets/characters/white-dragon/blink.png" alt="" aria-hidden="true" draggable="false">
+      </div></div></div></div>
+      <p class="stage-caption">WHITE DRAGON <span>·</span> FIRST CONTACT</p>
+    </section>
+    <aside>
+      <p class="eyebrow">CODEX GIRL / DESIGN STUDY</p>
+      <h1>白龙，<br><em>星际搭档。</em></h1>
+      <p class="intro">把一点灵气，带进每一场对局。</p>
+      <div class="swatches" aria-label="珍珠白、冰蓝、深海蓝与珊瑚橙配色"><i></i><i></i><i></i><i></i><span>PEARL / ICE / SPACE</span></div>
+      <p class="description">白色龙角、轻盈双翼与冰蓝龙尾，配上利落的舱员制服。安静待机，也会回应你的招呼。</p>
+      <div class="controls">
+        <button id="motion" type="button" aria-pressed="true">暂停动效</button>
+        <button id="hello" type="button">打个招呼</button>
+        <button id="backdrop" type="button" aria-pressed="false">切换浅色背景</button>
+      </div>
+      <p class="hint">移动鼠标看轻微跟随 · 支持系统减少动态效果</p>
+      <p class="hint"><a href="white-dragon-layers.html">打开分层素材台 · 查看部件与下载 PSD ↗</a></p>
+      <div class="speech" role="status" aria-live="polite" id="speech">棋舱已就绪，下一步由你决定。</div>
+      <details><summary>这次试作包含什么？</summary><p>已完成角色原画、眨眼帧、呼吸轻摆和整体视差跟随。这是 PNG 与 CSS 的动态概念验证，尚未制作 Cubism 网格、独立部件绑定或 .moc3 模型；转头、尾巴及头发独立摆动属于下一阶段。</p><a href="../assets/characters/white-dragon/README.md">查看制作说明与分层清单 ↗</a></details>
+    </aside>
+  </main>
+  <footer><span>原创角色概念 · 内置 ImageGen 生成</span><span>星际棋舱 / 角色研究</span></footer>
+</body>
+</html>

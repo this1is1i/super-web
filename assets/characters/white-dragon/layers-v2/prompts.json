@@ -1,0 +1,107 @@
+[
+  {
+    "file": "head-base.png",
+    "tool": "ImageGen",
+    "reference": "../layers-v1/head.png",
+    "selected": true,
+    "prompt": "Use case: precise-object-edit. This is production layer separation of the supplied chibi white dragon girl's HEAD for a Live2D PSD. Edit target is this exact image. Preserve the 1160x1355 full canvas, exact coordinates and scale of retained pixels. The head is only in the TOP half, with large EMPTY TRANSPARENT lower half. Do not center or enlarge small parts. True transparent alpha outside requested parts, no checkerboard, text, labels or shadow. Maintain the exact fine linework and colors. Only the specified part survives. Do not create a sprite sheet. Retain head back structure: face skin, ears, horns, side short hair and back/scalp hair. Remove BOTH eyes entirely (including whites, irises, lashes, eyelid lines), BOTH eyebrows, and mouth; seamlessly replace with original warm face skin and blush. Remove ONLY the central long front bang that runs from x540 y160 to x600 y455 plus neighboring forehead-covering bangs, reconstruct smooth forehead skin underneath up to hairline at y240. Preserve side cheek-framing hair, scalp crown, cowlick, horns, ears, chin and exact head silhouette. Result is a blank-faced head base with forehead exposed for adding separated front bangs and eye layers later. Keep subtle original nose. No eye sockets or ghost marks."
+  },
+  {
+    "file": "bangs.png",
+    "tool": "ImageGen",
+    "reference": "../layers-v1/head.png",
+    "selected": true,
+    "prompt": "Use case: precise-object-edit. This is production layer separation of the supplied chibi white dragon girl's HEAD for a Live2D PSD. Edit target is this exact image. Preserve the 1160x1355 full canvas, exact coordinates and scale of retained pixels. The head is only in the TOP half, with large EMPTY TRANSPARENT lower half. Do not center or enlarge small parts. True transparent alpha outside requested parts, no checkerboard, text, labels or shadow. Maintain the exact fine linework and colors. Only the specified part survives. Do not create a sprite sheet. Keep ONLY the white FRONT BANGS over the forehead: the large central tapered white lock from crown x540 y150 down to x590 y455, with adjacent angled front fringe strips toward x410 y370 and x685 y400. Preserve full shading and contours; complete the hidden root slightly upward. Remove head skin, all eyes/brows/mouth, side cheek hair, back/scalp hair, ears, horns and cowlick. Make ONLY the front-fringe assembly that overlays a bare forehead, in exact original upper canvas registration."
+  },
+  {
+    "file": "eye-white-left.png",
+    "tool": "ImageGen",
+    "reference": "../layers-v1/head.png",
+    "selected": true,
+    "prompt": "Use case: precise-object-edit. This is production layer separation of the supplied chibi white dragon girl's HEAD for a Live2D PSD. Edit target is this exact image. Preserve the 1160x1355 full canvas, exact coordinates and scale of retained pixels. The head is only in the TOP half, with large EMPTY TRANSPARENT lower half. Do not center or enlarge small parts. True transparent alpha outside requested parts, no checkerboard, text, labels or shadow. Maintain the exact fine linework and colors. Only the specified part survives. Do not create a sprite sheet. Keep ONLY the white/silvery eye sclera of the eye on VIEWER LEFT, original outer eye bounds about x393..507 y398..470. Remove iris and restore eye white underneath it. Remove all dark lashes, upper/lower lid lines, skin, highlights, hair and everything else. Preserve original open-eye shape and pale lavender shading at upper edge. This is one clean filled sclera shape, full eye aperture, at exact original position."
+  },
+  {
+    "file": "eye-white-right.png",
+    "tool": "ImageGen",
+    "reference": "../layers-v1/head.png",
+    "selected": true,
+    "prompt": "Use case: precise-object-edit. This is production layer separation of the supplied chibi white dragon girl's HEAD for a Live2D PSD. Edit target is this exact image. Preserve the 1160x1355 full canvas, exact coordinates and scale of retained pixels. The head is only in the TOP half, with large EMPTY TRANSPARENT lower half. Do not center or enlarge small parts. True transparent alpha outside requested parts, no checkerboard, text, labels or shadow. Maintain the exact fine linework and colors. Only the specified part survives. Do not create a sprite sheet. Keep ONLY the white/silvery eye sclera of the eye on VIEWER RIGHT, aperture bounds about x600..710 y419..485. Remove iris and restore eye white underneath it. Remove dark lashes, upper/lower lid lines, skin, hair and everything else. Preserve original open-eye shape and pale lavender shading along top. One clean filled eye white at its exact original position."
+  },
+  {
+    "file": "iris-left.png",
+    "tool": "ImageGen",
+    "reference": "../layers-v1/head.png",
+    "selected": true,
+    "prompt": "Use case: precise-object-edit. This is production layer separation of the supplied chibi white dragon girl's HEAD for a Live2D PSD. Edit target is this exact image. Preserve the 1160x1355 full canvas, exact coordinates and scale of retained pixels. The head is only in the TOP half, with large EMPTY TRANSPARENT lower half. Do not center or enlarge small parts. True transparent alpha outside requested parts, no checkerboard, text, labels or shadow. Maintain the exact fine linework and colors. Only the specified part survives. Do not create a sprite sheet. Keep ONLY the ice-blue iris and dark pupil of the eye on VIEWER LEFT, around x431..496 y402..471. Include all original tiny white reflections and crystalline blue gradients INSIDE the iris. Complete the upper round edge that was hidden under eyelid just a few pixels. Remove sclera, lashes, lids, skin and all other parts. A single ice-blue oval iris at exact original scale and coordinates."
+  },
+  {
+    "file": "iris-right.png",
+    "tool": "ImageGen",
+    "reference": "../layers-v1/head.png",
+    "selected": true,
+    "prompt": "Use case: precise-object-edit. This is production layer separation of the supplied chibi white dragon girl's HEAD for a Live2D PSD. Edit target is this exact image. Preserve the 1160x1355 full canvas, exact coordinates and scale of retained pixels. The head is only in the TOP half, with large EMPTY TRANSPARENT lower half. Do not center or enlarge small parts. True transparent alpha outside requested parts, no checkerboard, text, labels or shadow. Maintain the exact fine linework and colors. Only the specified part survives. Do not create a sprite sheet. Keep ONLY the ice-blue iris and dark pupil of the eye on VIEWER RIGHT, around x611..680 y422..486. Include all original tiny white reflections and crystalline blue gradients INSIDE the iris. Complete the upper round edge that was hidden under eyelid just a few pixels. Remove sclera, lashes, lids, skin and all other parts. A single ice-blue oval iris at exact original scale and coordinates."
+  },
+  {
+    "file": "lid-upper-left.png",
+    "tool": "ImageGen",
+    "reference": "../layers-v1/head.png",
+    "selected": true,
+    "prompt": "Use case: precise-object-edit. This is production layer separation of the supplied chibi white dragon girl's HEAD for a Live2D PSD. Edit target is this exact image. Preserve the 1160x1355 full canvas, exact coordinates and scale of retained pixels. The head is only in the TOP half, with large EMPTY TRANSPARENT lower half. Do not center or enlarge small parts. True transparent alpha outside requested parts, no checkerboard, text, labels or shadow. Maintain the exact fine linework and colors. Only the specified part survives. Do not create a sprite sheet. Keep ONLY the dark upper eyelid and eyelashes of the eye on VIEWER LEFT, following original curved lash line about x378..510 y378..444. Keep its thick deep brown ink shape and outer pointed lashes, plus tiny warm brown inner edge if necessary. Remove iris, eye white, lower lid, skin, eyebrow, hair and everything else. The inside of the eye beneath the upper lash must be TRANSPARENT. One isolated upper-eyelash arc in original coordinates."
+  },
+  {
+    "file": "lid-upper-right.png",
+    "tool": "ImageGen",
+    "reference": "../layers-v1/head.png",
+    "selected": false,
+    "prompt": "Use case: precise-object-edit. This is production layer separation of the supplied chibi white dragon girl's HEAD for a Live2D PSD. Edit target is this exact image. Preserve the 1160x1355 full canvas, exact coordinates and scale of retained pixels. The head is only in the TOP half, with large EMPTY TRANSPARENT lower half. Do not center or enlarge small parts. True transparent alpha outside requested parts, no checkerboard, text, labels or shadow. Maintain the exact fine linework and colors. Only the specified part survives. Do not create a sprite sheet. Keep ONLY the dark upper eyelid and eyelashes of the eye on VIEWER RIGHT, following original curved lash line about x594..736 y398..452. Keep its thick deep brown ink shape and outer pointed lashes, plus tiny warm brown inner edge if necessary. Remove iris, eye white, lower lid, skin, eyebrow, hair and everything else. The inside of the eye beneath the upper lash must be TRANSPARENT. One isolated upper-eyelash arc in original coordinates."
+  },
+  {
+    "file": "lid-lower-left.png",
+    "tool": "ImageGen",
+    "reference": "../layers-v1/head.png",
+    "selected": true,
+    "prompt": "Use case: precise-object-edit. This is production layer separation of the supplied chibi white dragon girl's HEAD for a Live2D PSD. Edit target is this exact image. Preserve the 1160x1355 full canvas, exact coordinates and scale of retained pixels. The head is only in the TOP half, with large EMPTY TRANSPARENT lower half. Do not center or enlarge small parts. True transparent alpha outside requested parts, no checkerboard, text, labels or shadow. Maintain the exact fine linework and colors. Only the specified part survives. Do not create a sprite sheet. Keep ONLY the fine warm peach-brown LOWER eyelid outline and its tiny outer-corner accent strokes on VIEWER LEFT, around x407..500 y460..478. No upper lash, no iris, no white, no skin fill, no hair or other parts. It should be a very thin subtle line, not a thick black cartoon outline. Preserve the exact original lower-eye contour and coordinates."
+  },
+  {
+    "file": "lid-lower-right.png",
+    "tool": "ImageGen",
+    "reference": "../layers-v1/head.png",
+    "selected": true,
+    "prompt": "Use case: precise-object-edit. This is production layer separation of the supplied chibi white dragon girl's HEAD for a Live2D PSD. Edit target is this exact image. Preserve the 1160x1355 full canvas, exact coordinates and scale of retained pixels. The head is only in the TOP half, with large EMPTY TRANSPARENT lower half. Do not center or enlarge small parts. True transparent alpha outside requested parts, no checkerboard, text, labels or shadow. Maintain the exact fine linework and colors. Only the specified part survives. Do not create a sprite sheet. Keep ONLY the fine warm peach-brown LOWER eyelid outline and its tiny outer-corner accent strokes on VIEWER RIGHT, around x611..700 y477..491. No upper lash, no iris, no white, no skin fill, no hair or other parts. It should be a very thin subtle line, not a thick black cartoon outline. Preserve the exact original lower-eye contour and coordinates."
+  },
+  {
+    "file": "brow-left.png",
+    "tool": "ImageGen",
+    "reference": "../layers-v1/head.png",
+    "selected": true,
+    "prompt": "Use case: precise-object-edit. This is production layer separation of the supplied chibi white dragon girl's HEAD for a Live2D PSD. Edit target is this exact image. Preserve the 1160x1355 full canvas, exact coordinates and scale of retained pixels. The head is only in the TOP half, with large EMPTY TRANSPARENT lower half. Do not center or enlarge small parts. True transparent alpha outside requested parts, no checkerboard, text, labels or shadow. Maintain the exact fine linework and colors. Only the specified part survives. Do not create a sprite sheet. Keep ONLY the light gray tapered eyebrow on VIEWER LEFT, around x416..493 y342..355. Complete the portion hidden under fringe slightly toward x400. Preserve its gentle calm arc, delicate thin gray fill. No skin, eyes, hair or other part, just this one eyebrow in exact original position."
+  },
+  {
+    "file": "brow-right.png",
+    "tool": "ImageGen",
+    "reference": "../layers-v1/head.png",
+    "selected": true,
+    "prompt": "Use case: precise-object-edit. This is production layer separation of the supplied chibi white dragon girl's HEAD for a Live2D PSD. Edit target is this exact image. Preserve the 1160x1355 full canvas, exact coordinates and scale of retained pixels. The head is only in the TOP half, with large EMPTY TRANSPARENT lower half. Do not center or enlarge small parts. True transparent alpha outside requested parts, no checkerboard, text, labels or shadow. Maintain the exact fine linework and colors. Only the specified part survives. Do not create a sprite sheet. Keep ONLY the light gray tapered eyebrow on VIEWER RIGHT, around x612..677 y361..374. Complete the portion hidden under fringe slightly toward x690. Preserve its gentle calm arc, delicate thin gray fill. No skin, eyes, hair or other part, just this one eyebrow in exact original position."
+  },
+  {
+    "file": "mouth-smile.png",
+    "tool": "ImageGen",
+    "reference": "../layers-v1/head.png",
+    "selected": true,
+    "prompt": "Use case: precise-object-edit. This is production layer separation of the supplied chibi white dragon girl's HEAD for a Live2D PSD. Edit target is this exact image. Preserve the 1160x1355 full canvas, exact coordinates and scale of retained pixels. The head is only in the TOP half, with large EMPTY TRANSPARENT lower half. Do not center or enlarge small parts. True transparent alpha outside requested parts, no checkerboard, text, labels or shadow. Maintain the exact fine linework and colors. Only the specified part survives. Do not create a sprite sheet. Keep ONLY the tiny closed smiling mouth stroke, around x522..568 y518..526. It is a delicate warm brown shallow curved line with a soft small highlight below; no face skin patch, nose, eyes or other parts. Transparent everywhere except this small mouth line at exact original position. Do not enlarge."
+  },
+  {
+    "file": "mouth-open.png",
+    "tool": "ImageGen",
+    "reference": "../layers-v1/head.png",
+    "selected": true,
+    "prompt": "Use case: precise-object-edit. This is production layer separation of the supplied chibi white dragon girl's HEAD for a Live2D PSD. Edit target is this exact image. Preserve the 1160x1355 full canvas, exact coordinates and scale of retained pixels. The head is only in the TOP half, with large EMPTY TRANSPARENT lower half. Do not center or enlarge small parts. True transparent alpha outside requested parts, no checkerboard, text, labels or shadow. Maintain the exact fine linework and colors. Only the specified part survives. Do not create a sprite sheet. Keep ONLY a new small gently OPEN smiling mouth at the same mouth position around x544 y522. Width about 48 pixels, height about 25 pixels. Dark warm brown upper inner mouth, subtle pink tongue at bottom, delicate brown lip edge. Cute soft greeting, not a huge laugh. Remove all skin, eyes, nose, hair and other parts. Transparent everywhere except this small open mouth in the original face's mouth position."
+  },
+  {
+    "file": "lid-upper-right-corrected.png",
+    "tool": "ImageGen",
+    "reference": "../layers-v1/head.png",
+    "selected": true,
+    "prompt": "Use case: precise-object-edit. This is production layer separation of the supplied chibi white dragon girl's HEAD for a Live2D PSD. Edit target is this exact image. Preserve the 1160x1355 full canvas, exact coordinates and scale of retained pixels. The head is only in the TOP half, with large EMPTY TRANSPARENT lower half. Do not center or enlarge small parts. True transparent alpha outside requested parts, no checkerboard, text, labels or shadow. Maintain the exact fine linework and colors. Only the specified part survives. Do not create a sprite sheet. Retain ONLY the exact VIEWER RIGHT upper eyelash from the source. CRITICAL scale lock: the complete dark arc must fit x594..735 and y399..452 of a 1160x1355 canvas. Width 141 pixels, height 53 pixels, NOT enlarged. Use the original thin sharp anime lash with a curved inner boundary from (600,442) up to (650,417) down toward (710,436), small outer corner points at (735,427). All iris, sclera, skin, eyebrows and other parts removed. Empty lower canvas. Exact original native scale. One small RIGHT upper eyelash only."
+  }
+]

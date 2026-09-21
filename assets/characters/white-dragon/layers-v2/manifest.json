@@ -1,0 +1,215 @@
+{
+  "version": 2,
+  "status": "facial-layer-art-not-rigged",
+  "description": "眼白、虹膜、上下眼睑、眉与嘴，分别可编辑。",
+  "width": 1280,
+  "height": 1664,
+  "order": "back-to-front",
+  "layers": [
+    {
+      "id": "tail",
+      "name": "01 龙尾",
+      "file": "../layers-v1/tail.png",
+      "left": 40,
+      "top": 228
+    },
+    {
+      "id": "wing-left",
+      "name": "02 左翼",
+      "file": "../layers-v1/wing-left.png",
+      "left": 40,
+      "top": 198
+    },
+    {
+      "id": "wing-right",
+      "name": "03 右翼",
+      "file": "../layers-v1/wing-right.png",
+      "left": 40,
+      "top": 228
+    },
+    {
+      "id": "body",
+      "name": "04 身体与四肢",
+      "file": "../layers-v1/body.png",
+      "left": 40,
+      "top": 228
+    },
+    {
+      "id": "hair-left",
+      "name": "05 左侧发束",
+      "file": "../layers-v1/hair-left.png",
+      "left": 40,
+      "top": 172
+    },
+    {
+      "id": "hair-right",
+      "name": "06 右侧发束",
+      "file": "../layers-v1/hair-right.png",
+      "left": 40,
+      "top": 172
+    },
+    {
+      "id": "head-base",
+      "name": "07 头底与脸底",
+      "left": 40,
+      "top": 72,
+      "file": "head-base.png"
+    },
+    {
+      "id": "eye-white-left",
+      "name": "08 左眼白",
+      "left": 40,
+      "top": 152,
+      "explode": [
+        -60,
+        -80
+      ],
+      "file": "eye-white-left.png"
+    },
+    {
+      "id": "iris-left",
+      "name": "09 左虹膜与高光",
+      "left": 25,
+      "top": 132,
+      "clipTo": "eye-white-left",
+      "explode": [
+        -60,
+        -80
+      ],
+      "file": "iris-left.png"
+    },
+    {
+      "id": "eye-white-right",
+      "name": "10 右眼白",
+      "left": 40,
+      "top": 132,
+      "explode": [
+        60,
+        -80
+      ],
+      "file": "eye-white-right.png"
+    },
+    {
+      "id": "iris-right",
+      "name": "11 右虹膜与高光",
+      "left": 50,
+      "top": 102,
+      "clipTo": "eye-white-right",
+      "explode": [
+        60,
+        -80
+      ],
+      "file": "iris-right.png"
+    },
+    {
+      "id": "lid-upper-left",
+      "name": "12 左上眼睑",
+      "left": 40,
+      "top": 152,
+      "explode": [
+        -60,
+        -80
+      ],
+      "file": "lid-upper-left.png"
+    },
+    {
+      "id": "lid-upper-right",
+      "name": "13 右上眼睑",
+      "left": 28,
+      "top": 24,
+      "explode": [
+        60,
+        -80
+      ],
+      "file": "lid-upper-right-corrected.png"
+    },
+    {
+      "id": "lid-lower-left",
+      "name": "14 左下眼睑",
+      "left": 40,
+      "top": 112,
+      "explode": [
+        -60,
+        -80
+      ],
+      "file": "lid-lower-left.png"
+    },
+    {
+      "id": "lid-lower-right",
+      "name": "15 右下眼睑",
+      "left": 40,
+      "top": 112,
+      "explode": [
+        60,
+        -80
+      ],
+      "file": "lid-lower-right.png"
+    },
+    {
+      "id": "brow-left",
+      "name": "16 左眉",
+      "left": 40,
+      "top": 172,
+      "explode": [
+        -60,
+        -110
+      ],
+      "file": "brow-left.png"
+    },
+    {
+      "id": "brow-right",
+      "name": "17 右眉",
+      "left": 40,
+      "top": 132,
+      "explode": [
+        60,
+        -110
+      ],
+      "file": "brow-right.png"
+    },
+    {
+      "id": "mouth-smile",
+      "name": "18 闭口微笑",
+      "left": 40,
+      "top": 158,
+      "variantGroup": "mouth",
+      "explode": [
+        0,
+        -30
+      ],
+      "file": "mouth-smile.png"
+    },
+    {
+      "id": "mouth-open",
+      "name": "19 张口微笑（备选）",
+      "left": 44,
+      "top": 154,
+      "hidden": true,
+      "variantGroup": "mouth",
+      "explode": [
+        0,
+        -30
+      ],
+      "file": "mouth-open.png"
+    },
+    {
+      "id": "bangs",
+      "name": "20 前发与刘海",
+      "left": 40,
+      "top": 72,
+      "explode": [
+        0,
+        -150
+      ],
+      "file": "bangs.png"
+    },
+    {
+      "id": "reference",
+      "name": "00 V1 拼合对照（隐藏）",
+      "file": "../layers-v1/composite-preview.png",
+      "left": 0,
+      "top": 148,
+      "hidden": true
+    }
+  ]
+}

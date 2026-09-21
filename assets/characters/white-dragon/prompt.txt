@@ -1,0 +1,11 @@
+Use case: stylized-concept
+Asset type: first original full-body character art for a browser game's Live2D preproduction and animation study.
+Primary request: A very appealing Q-version chibi white dragon girl, a friendly starship coding companion nicknamed Codex girl. Original design, not a whale, no maid uniform.
+Subject: single character, about 2.8 heads tall, adult mascot stylized chibi proportions, round but sophisticated face, large clear icy-blue eyes, closed small confident smile. Pearl-white softly layered shoulder-length hair with long side locks, two short elegant curved ivory dragon horns pointing backwards, small pointed dragon ears, a pearlescent white dragon tail with pale ice-blue fin ridges curving visibly beside her. Small folded white dragon wings visible behind shoulders.
+Costume: fully covered tasteful navy-blue and ivory starship officer tunic/jacket with a neat high collar, ice-blue piping, tiny muted coral-orange orbit pin, short capelet, dark fitted leggings, small white boots. Slight futuristic coder motif via simple abstract bracket-shaped pin, no wordmarks.
+Composition: one full-body front-facing character centered, near-symmetrical neutral relaxed stance suitable for future rigging, hands relaxed slightly away from the torso and fingers together, hair locks visually separate from body, both eyes fully visible, head level, tail and horns entirely inside frame with generous 10 percent clear margins. No props.
+Style: polished premium anime game character illustration, crisp delicate line work, controlled cel shading with soft pearly highlights, excellent silhouette readable at 220px tall. Warm approachable expression.
+Background: genuinely transparent alpha background. No scenery, no ground shadow, no frame, no text, no labels, no logo, no watermark. Character isolated for later use on a dark navy interface.
+Output: portrait single illustration, high quality. This is a concept PNG, not a compiled Live2D model.
+
+Blink edit: only close both eyes into relaxed eyelid lines; preserve the exact canvas, character geometry, outfit, all other features and transparent alpha. Generated with the built-in ImageGen tool, using idle.png as edit target.

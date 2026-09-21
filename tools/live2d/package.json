@@ -1,0 +1,14 @@
+{
+  "name": "white-dragon-psd-tools",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Project-local packaging and validation of generated Live2D art layers",
+  "scripts": {
+    "build": "node build-psd.js",
+    "test": "node --test verify-packaging.cjs"
+  },
+  "dependencies": {
+    "ag-psd": "^31.0.2",
+    "pngjs": "^7.0.0"
+  }
+}

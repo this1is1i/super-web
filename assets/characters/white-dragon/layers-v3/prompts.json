@@ -1,0 +1,20 @@
+{
+  "torso-refined.png": {
+    "source": "../layers-v1/body.png",
+    "tool": "ImageGen",
+    "status": "candidate-visible",
+    "note": "躯干候选；V1 身体层仍保留在 manifest 中作为可回退底稿。"
+  },
+  "iris-clean-left.png": {
+    "source": "../layers-v2/iris-left.png",
+    "tool": "ImageGen",
+    "status": "hidden-trial",
+    "note": "去高光试验，默认仍使用 V2 左虹膜与高光层。"
+  },
+  "iris-clean-right.png": {
+    "source": "../layers-v2/iris-right.png",
+    "tool": "ImageGen",
+    "status": "hidden-trial",
+    "note": "去高光试验，默认仍使用 V2 右虹膜与高光层。"
+  }
+}

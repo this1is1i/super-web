@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "status": "coarse-layer-art-not-rigged",
+  "width": 1248,
+  "height": 1488,
+  "order": "back-to-front",
+  "layers": [
+    { "id":"tail", "name":"01 龙尾", "file":"tail.png", "left":40, "top":80, "pivot":[680,990] },
+    { "id":"wing-left", "name":"02 左翼（画面左）", "file":"wing-left.png", "left":40, "top":50, "pivot":[450,730] },
+    { "id":"wing-right", "name":"03 右翼（画面右）", "file":"wing-right.png", "left":40, "top":80, "pivot":[785,700] },
+    { "id":"body", "name":"04 身体与四肢", "file":"body.png", "left":40, "top":80, "pivot":[620,1050] },
+    { "id":"hair-left", "name":"05 左侧发束（画面左）", "file":"hair-left.png", "left":40, "top":24, "pivot":[395,460] },
+    { "id":"hair-right", "name":"06 右侧发束（画面右）", "file":"hair-right.png", "left":40, "top":24, "pivot":[790,465] },
+    { "id":"head", "name":"07 头部与五官", "file":"head.png", "left":40, "top":24, "pivot":[615,590] },
+    { "id":"reference", "name":"00 原画对照（默认隐藏）", "file":"../idle.png", "left":40, "top":80, "hidden":true }
+  ]
+}
